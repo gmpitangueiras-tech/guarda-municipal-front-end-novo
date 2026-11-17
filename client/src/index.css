@@ -1339,3 +1339,170 @@ input:focus-visible {
 .login-theme-blue .login-waiting small { color: #718297; }
 .login-theme-blue .login-waiting-track { background: #e1ebf4; }
 .login-theme-blue .login-waiting-track span { background: linear-gradient(90deg, #235b8c, #83a9cc, var(--accent)); }
+
+
+/* Identidade azul institucional do painel e da barra inferior; estados operacionais mantêm suas cores semânticas. */
+.dashboard-theme-blue {
+  --ink: #1b2c3e;
+  --muted: #65778a;
+  --forest: #173f68;
+  --forest-deep: #0c2948;
+  --mint: #e1ebf5;
+  --accent: #c9a565;
+  --line: #d8e3ee;
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse at 72% 0%, rgba(203, 221, 240, .66), transparent 33rem),
+    #f3f7fb;
+}
+.dashboard-theme-blue :is(button, a, input):focus-visible { outline-color: rgba(58, 108, 157, .48); }
+.dashboard-theme-blue .dashboard-topbar {
+  border-bottom-color: rgba(216, 227, 238, .92);
+  background: rgba(249, 251, 253, .94);
+}
+.dashboard-theme-blue .dashboard-brand { color: #173f68; }
+.dashboard-theme-blue .dashboard-brand-mark { border-color: #d7e2ed; box-shadow: 0 4px 12px rgba(23, 63, 104, .06); }
+.dashboard-theme-blue .dashboard-brand small,
+.dashboard-theme-blue .dashboard-connection,
+.dashboard-theme-blue .dashboard-signout { color: #6b7d90; }
+.dashboard-theme-blue .dashboard-connection i { background: #3979ae; box-shadow: 0 0 0 4px rgba(57, 121, 174, .12); }
+.dashboard-theme-blue .dashboard-connection.is-offline i { background: #cb754b; box-shadow: 0 0 0 4px rgba(203, 117, 75, .12); }
+.dashboard-theme-blue .dashboard-bell,
+.dashboard-theme-blue .dashboard-icon-button {
+  color: #234f78;
+  border-color: #d6e2ee;
+  background: #fff;
+}
+.dashboard-theme-blue .dashboard-bell:hover,
+.dashboard-theme-blue .dashboard-bell.is-open,
+.dashboard-theme-blue .dashboard-icon-button:hover {
+  border-color: #b8cde1;
+  background: #edf4fa;
+}
+.dashboard-theme-blue .dashboard-bell-count { border-color: #f9fbfd; }
+.dashboard-theme-blue .dashboard-signout:hover { color: #173f68; background: #e7eff7; }
+.dashboard-theme-blue .dashboard-notification-panel {
+  border-color: #d8e3ee;
+  box-shadow: 0 24px 70px rgba(12, 41, 72, .17);
+}
+.dashboard-theme-blue .dashboard-notification-tools { border-color: #e5edf5; }
+.dashboard-theme-blue .dashboard-notification-tools > span { color: #667b90; }
+.dashboard-theme-blue .dashboard-notification-tools button {
+  color: #285f91;
+  border-color: #d8e5f0;
+  background: #f4f8fc;
+}
+.dashboard-theme-blue .dashboard-notification-tools button:hover:not(:disabled) { background: #e8f1f9; }
+.dashboard-theme-blue .dashboard-notification-list li { border-color: #e4ebf2; }
+.dashboard-theme-blue .dashboard-notification-list li.is-unread { border-color: #cbdced; background: #f3f8fc; }
+.dashboard-theme-blue .dashboard-notification-copy strong { color: #263c52; }
+.dashboard-theme-blue .dashboard-notification-copy > span { color: #64788c; }
+.dashboard-theme-blue .dashboard-notification-copy small { color: #8798a8; }
+.dashboard-theme-blue .dashboard-notification-open > svg { color: #5e82a4; }
+.dashboard-theme-blue .dashboard-notification-toggle,
+.dashboard-theme-blue .dashboard-notification-footer { color: #285f91; }
+.dashboard-theme-blue .dashboard-notification-footer { border-top-color: #e5edf5; }
+.dashboard-theme-blue .dashboard-notification-footer:hover { color: #123c66; }
+.dashboard-theme-blue .dashboard-empty-notifications { color: #6b7e91; }
+.dashboard-theme-blue .dashboard-empty-notifications svg { color: #477aa8; }
+.dashboard-theme-blue .dashboard-empty-notifications strong { color: #304a63; }
+.dashboard-theme-blue .dashboard-panel-loading { color: #6b7e91; }
+.dashboard-theme-blue .dashboard-welcome {
+  background:
+    radial-gradient(circle at 82% 15%, rgba(201, 165, 101, .18), transparent 24%),
+    radial-gradient(circle at 97% 92%, rgba(133, 170, 205, .16), transparent 29%),
+    linear-gradient(118deg, #173f68, #0c2948 78%);
+  box-shadow: 0 18px 38px rgba(12, 41, 72, .15);
+}
+.dashboard-theme-blue .dashboard-welcome .dashboard-eyebrow { color: #c0d4e9; }
+.dashboard-theme-blue .dashboard-welcome h1 { color: #f7faff; }
+.dashboard-theme-blue .dashboard-welcome h1 span { color: #e1c487; }
+.dashboard-theme-blue .dashboard-welcome > div:first-child > p:last-child { color: #d1deeb; }
+.dashboard-theme-blue .dashboard-profile-chip { border-color: rgba(219, 234, 248, .25); }
+.dashboard-theme-blue .dashboard-profile-avatar { color: #173f68; background: #dce8f4; }
+.dashboard-theme-blue .dashboard-profile-chip small { color: #c3d5e8; }
+/* Sincronização pendente mantém âmbar como código de estado, não como cor de marca. */
+.dashboard-theme-blue .dashboard-sync-alert { box-shadow: 0 5px 18px rgba(125, 88, 29, .035); }
+.dashboard-theme-blue .dashboard-section-heading h2,
+.dashboard-theme-blue .dashboard-panel-heading h2 { color: #253a50; }
+.dashboard-theme-blue .dashboard-section-heading p:not(.dashboard-eyebrow),
+.dashboard-theme-blue .dashboard-section-note { color: #73869a; }
+.dashboard-theme-blue .dashboard-quick-card {
+  border-color: #dce6ef;
+  box-shadow: 0 5px 18px rgba(26, 57, 86, .035);
+}
+.dashboard-theme-blue .dashboard-quick-card:hover { border-color: #b8cde1; box-shadow: 0 10px 25px rgba(26, 57, 86, .09); }
+.dashboard-theme-blue .dashboard-quick-icon { color: #245a88; background: #e5eef7; }
+.dashboard-theme-blue .dashboard-quick-card.accent-blue .dashboard-quick-icon { color: #245a88; background: #e5eef7; }
+.dashboard-theme-blue .dashboard-quick-copy strong { color: #2a4056; }
+.dashboard-theme-blue .dashboard-quick-copy small,
+.dashboard-theme-blue .dashboard-quick-arrow { color: #7b8da0; }
+.dashboard-theme-blue .dashboard-panel {
+  border-color: #dce6ef;
+  background: rgba(255, 255, 255, .92);
+  box-shadow: 0 8px 28px rgba(26, 57, 86, .045);
+}
+.dashboard-theme-blue .dashboard-text-link,
+.dashboard-theme-blue .dashboard-footer a { color: #285f91; }
+.dashboard-theme-blue .dashboard-text-link:hover,
+.dashboard-theme-blue .dashboard-footer a:hover { color: #123c66; }
+.dashboard-theme-blue .dashboard-record-row { border-top-color: #e7edf3; }
+.dashboard-theme-blue .dashboard-record-icon { color: #356f9f; background: #e7f0f8; }
+.dashboard-theme-blue .dashboard-record-icon.is-pending { color: #a56b20; background: #fbf0db; }
+.dashboard-theme-blue .dashboard-record-main strong { color: #293e53; }
+.dashboard-theme-blue .dashboard-record-main > span { color: #6f8295; }
+.dashboard-theme-blue .dashboard-record-main small { color: #8c9ba9; }
+.dashboard-theme-blue .dashboard-record-meta { color: #77899a; }
+.dashboard-theme-blue .dashboard-status { color: #285f91; background: #eaf2f9; }
+.dashboard-theme-blue .dashboard-status.is-pending { color: #8f5b18; background: #fbf0db; }
+.dashboard-theme-blue .dashboard-empty-records { color: #77899a; }
+.dashboard-theme-blue .dashboard-empty-records svg { color: #91a6ba; }
+.dashboard-theme-blue .dashboard-loading-line { color: #72869a; }
+.dashboard-theme-blue .dashboard-loading-line span { border-color: #cfdeeb; border-top-color: #285f91; }
+.dashboard-theme-blue .dashboard-footer { color: #768a9d; border-top-color: #dde7f0; }
+.dashboard-theme-blue .dashboard-footer svg { color: #3f75a2; }
+/* Barra inferior e folhas de ação/perfil */
+.dashboard-theme-blue .dashboard-bottom-nav {
+  border-color: #d6e2ee;
+  background: rgba(255, 255, 255, .97);
+  box-shadow: 0 12px 42px rgba(12, 41, 72, .16);
+}
+.dashboard-theme-blue .dashboard-nav-item { color: #687d91; }
+.dashboard-theme-blue .dashboard-nav-item:hover,
+.dashboard-theme-blue .dashboard-nav-item.is-current { color: #1d5484; background: #eaf2f9; }
+.dashboard-theme-blue .dashboard-nav-create {
+  background: linear-gradient(145deg, #245f92, #12385f);
+  box-shadow: 0 8px 22px rgba(18, 56, 95, .29);
+}
+.dashboard-theme-blue .dashboard-nav-create:hover { box-shadow: 0 11px 26px rgba(18, 56, 95, .34); }
+.dashboard-theme-blue .dashboard-nav-create-icon { color: #f0d8a6; background: rgba(201, 165, 101, .2); }
+.dashboard-theme-blue .dashboard-menu-backdrop { background: rgba(12, 41, 72, .44); }
+.dashboard-theme-blue .dashboard-menu-sheet { border-color: #d8e3ee; box-shadow: 0 24px 80px rgba(12, 41, 72, .24); }
+.dashboard-theme-blue .dashboard-menu-handle { background: #d6e1eb; }
+.dashboard-theme-blue .dashboard-menu-heading h2 { color: #1b3550; }
+.dashboard-theme-blue .dashboard-menu-close,
+.dashboard-theme-blue .dashboard-menu-back { color: #466987; border-color: #d8e3ee; }
+.dashboard-theme-blue .dashboard-menu-close:hover,
+.dashboard-theme-blue .dashboard-menu-back:hover { background: #edf4fa; }
+.dashboard-theme-blue .dashboard-menu-option { color: #253b51; border-color: #dce6ef; background: #fbfdff; }
+.dashboard-theme-blue .dashboard-menu-option:hover { border-color: #b8cde1; background: #f1f7fc; }
+.dashboard-theme-blue .dashboard-menu-option strong { color: #293f55; }
+.dashboard-theme-blue .dashboard-menu-option small { color: #6e8296; }
+.dashboard-theme-blue .dashboard-menu-option > svg { color: #6e88a0; }
+.dashboard-theme-blue .dashboard-menu-option-icon { color: #285f91; background: #e5eef7; }
+.dashboard-theme-blue .dashboard-menu-option-icon.is-gold { color: #875b21; background: #fbf0dc; }
+.dashboard-theme-blue .dashboard-menu-option.is-danger { border-color: #f0dfdc; background: #fffafa; }
+.dashboard-theme-blue .dashboard-menu-option.is-danger strong { color: #99483e; }
+.dashboard-theme-blue .dashboard-menu-option-icon.is-danger { color: #a14e43; background: #fbecea; }
+.dashboard-theme-blue .dashboard-profile-sheet-identity { border-color: #dce6ef; background: #f3f8fc; }
+.dashboard-theme-blue .dashboard-profile-sheet-identity strong { color: #293e53; }
+.dashboard-theme-blue .dashboard-profile-sheet-identity small { color: #6e8296; }
+.dashboard-theme-blue .dashboard-profile-details > div { border-color: #e4ebf2; }
+.dashboard-theme-blue .dashboard-profile-details dt { color: #71869a; }
+.dashboard-theme-blue .dashboard-profile-details dd { color: #293e53; }
+@media (max-width: 640px) {
+  .dashboard-theme-blue .dashboard-bottom-nav { border-top-color: #d6e2ee; }
+}
+
+.dashboard-theme-blue .dashboard-eyebrow { color: #55799d; }
+.dashboard-theme-blue .dashboard-welcome .dashboard-eyebrow { color: #c0d4e9; }

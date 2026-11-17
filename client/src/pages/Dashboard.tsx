@@ -304,13 +304,13 @@ export default function Dashboard({ profile, onSignOut }: DashboardProps) {
 
   const quickActions = [
     { title: "Registrar ocorrência", description: "Novo registro operacional", icon: FilePlus2, route: "nova-ocorrencia", accent: "gold" },
-    { title: "Consultar ocorrências", description: "Pesquisar registros da equipe", icon: ClipboardList, route: "ocorrencias", accent: "green" },
-    { title: "Registrar abordagem", description: "Pessoa ou veículo", icon: Shield, route: "consulta", accent: "green" },
+    { title: "Consultar ocorrências", description: "Pesquisar registros da equipe", icon: ClipboardList, route: "ocorrencias", accent: "blue" },
+    { title: "Registrar abordagem", description: "Pessoa ou veículo", icon: Shield, route: "consulta", accent: "blue" },
     { title: "Consultar abordagens", description: "Acessar a consulta operacional", icon: UsersRound, route: "consulta", accent: "gold" },
   ];
 
   return (
-    <main className="dashboard-shell">
+    <main className="dashboard-shell dashboard-theme-blue">
       <header className="dashboard-topbar">
         <a className="dashboard-brand" href="#/inicio" aria-label="Início da Guarda Municipal">
           <span className="dashboard-brand-mark"><img src={brasaoGuarda} alt="" /></span>
