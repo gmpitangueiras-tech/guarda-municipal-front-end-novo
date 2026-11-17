@@ -5,11 +5,12 @@ import {
   CheckCircle2,
   Eye,
   EyeOff,
+  IdCard,
   LockKeyhole,
-  Mail,
   ShieldCheck,
 } from "lucide-react";
-import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { loginWithCpf } from "@/lib/auth";
+import { formatCpf } from "@/lib/cpf";
 import brasaoGuarda from "@/assets/brasao-guarda-pitangueiras.png";
 
 type Feedback = {
@@ -22,7 +23,7 @@ type HomeProps = {
 };
 
 export default function Home({ onFirstAccess }: HomeProps) {
-  const [email, setEmail] = useState("");
+  const [cpf, setCpf] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -32,60 +33,36 @@ export default function Home({ onFirstAccess }: HomeProps) {
     event.preventDefault();
     setFeedback(null);
 
-    if (!email.trim() || !password) {
+    if (!cpf.trim() || !password) {
       setFeedback({
         type: "error",
-        message: "Informe seu e-mail e sua senha para continuar.",
-      });
-      return;
-    }
-
-    if (!supabase || !isSupabaseConfigured) {
-      setFeedback({
-        type: "error",
-        message:
-          "O Supabase ainda não está conectado. Configure as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no ambiente local.",
+        message: "Informe seu CPF e sua senha para continuar.",
       });
       return;
     }
 
     setIsLoading(true);
-    const { data: authData, error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
+    const result = await loginWithCpf(cpf, password);
     setIsLoading(false);
 
-    if (error) {
+    if (!result.success) {
       setFeedback({
         type: "error",
-        message: "Não foi possível entrar. Confira seus dados e tente novamente.",
+        message: result.error,
       });
       return;
     }
 
-    const { data: profile, error: profileError } = await supabase
-      .from("usuarios")
-      .select("nome_completo,email,status,primeiro_acesso")
-      .eq("auth_user_id", authData.user.id)
-      .maybeSingle();
+    const { profile } = result;
 
-    if (profileError || !profile) {
-      setFeedback({
-        type: "error",
-        message: "Sua conta foi autenticada, mas o perfil funcional não foi localizado.",
-      });
-      return;
-    }
-
-    if (profile.primeiro_acesso || profile.status === "primeiro_acesso") {
-      onFirstAccess({ email: profile.email ?? email.trim(), name: profile.nome_completo });
+    if (profile.primeiro_acesso === true || profile.status === "primeiro_acesso") {
+      onFirstAccess({ email: profile.email, name: profile.nome_completo });
       return;
     }
 
     setFeedback({
       type: "success",
-      message: "Acesso autorizado. Estamos preparando seu atendimento.",
+      message: `Acesso autorizado${profile.apelido ? `, ${profile.apelido}` : ""}. Estamos preparando seu atendimento.`,
     });
   }
 
@@ -151,24 +128,24 @@ export default function Home({ onFirstAccess }: HomeProps) {
 
           <form className="login-form" onSubmit={handleSubmit} noValidate>
             <div className="field-group">
-              <label htmlFor="email">E-mail</label>
+              <label htmlFor="cpf">CPF</label>
               <div className="input-wrap">
-                <Mail size={18} aria-hidden="true" />
+                <IdCard size={18} aria-hidden="true" />
                 <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  inputMode="email"
-                  placeholder="voce@exemplo.com"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  aria-describedby="email-hint"
+                  id="cpf"
+                  name="cpf"
+                  type="text"
+                  autoComplete="username"
+                  inputMode="numeric"
+                  placeholder="000.000.000-00"
+                  value={cpf}
+                  onChange={(event) => setCpf(formatCpf(event.target.value))}
+                  aria-describedby="cpf-hint"
                   required
                 />
               </div>
-              <span className="field-hint" id="email-hint">
-                E-mail funcional cadastrado no sistema.
+              <span className="field-hint" id="cpf-hint">
+                CPF cadastrado no sistema funcional.
               </span>
             </div>
 
