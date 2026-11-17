@@ -1776,3 +1776,121 @@ input:focus-visible {
   white-space: nowrap !important;
   border: 0 !important;
 }
+
+
+/* Rich, privacy-preserving record cards for the three home activity tabs. */
+.dashboard-theme-blue .dashboard-record-tabpanel .dashboard-record-row.dashboard-record-rich {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  min-height: 0;
+  padding: 13px 0;
+  border-bottom: 1px solid #eaf0f6;
+}
+.dashboard-theme-blue .dashboard-record-artwork {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  place-items: center;
+  color: #477aa8;
+  border: 1px solid #e0eaf3;
+  border-radius: 14px 14px 14px 5px;
+  background: #edf4fa;
+  box-shadow: 0 2px 7px rgba(26, 57, 86, .06);
+}
+.dashboard-record-artwork-fallback {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: #477aa8;
+  background: linear-gradient(145deg, #f2f7fb, #e7f0f8);
+}
+.dashboard-record-photo { display: block; width: 100%; height: 100%; object-fit: cover; }
+.dashboard-theme-blue .dashboard-record-rich-main { display: grid; min-width: 0; gap: 6px; }
+.dashboard-record-titleline { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; min-width: 0; }
+.dashboard-theme-blue .dashboard-record-titleline > strong {
+  min-width: 0;
+  flex: 1 1 150px;
+  color: #183d63;
+  font-size: 13px;
+  font-weight: 790;
+  line-height: 1.28;
+  letter-spacing: -.025em;
+  overflow-wrap: anywhere;
+}
+.dashboard-severity-chip,
+.dashboard-record-kind-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 21px;
+  padding: 3px 7px;
+  color: #3d6387;
+  border: 1px solid #deebf5;
+  border-radius: 99px;
+  background: #f2f7fb;
+  font-size: 9px;
+  font-weight: 760;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.dashboard-severity-chip { color: #765b30; border-color: #efe4d1; background: #fbf6ed; }
+.dashboard-record-summary-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 5px 10px;
+  min-width: 0;
+  color: #6d8297;
+  font-size: 10px;
+  line-height: 1.35;
+}
+.dashboard-record-number { min-width: 0; color: #54718d; font-weight: 740; overflow-wrap: anywhere; }
+.dashboard-record-summary-line time { flex: 0 0 auto; color: #77899a; font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dashboard-theme-blue .dashboard-record-location {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+  color: #647d95;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.dashboard-record-location > svg { flex: 0 0 auto; margin-top: 1px; color: #8aa1b7; }
+.dashboard-record-location > span { min-width: 0; overflow-wrap: anywhere; }
+.dashboard-record-state-line { display: flex; align-items: center; min-width: 0; }
+.dashboard-record-state-line .dashboard-status,
+.dashboard-record-summary-line .dashboard-status { max-width: 100%; font-size: 9px; }
+.dashboard-record-officers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 12px;
+  min-width: 0;
+  margin-top: 1px;
+}
+.dashboard-record-officers > span { display: flex; align-items: flex-start; gap: 5px; min-width: 0; color: #72879a; font-size: 9px; line-height: 1.4; }
+.dashboard-record-officers > span > svg { flex: 0 0 auto; margin-top: 1px; color: #8aa1b7; }
+.dashboard-record-officers > span > span { min-width: 0; overflow-wrap: anywhere; }
+.dashboard-record-officers strong { color: #49647d; font-weight: 750; }
+@media (max-width: 640px) {
+  .dashboard-theme-blue .dashboard-record-tabpanel .dashboard-record-row.dashboard-record-rich {
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px 0;
+  }
+  .dashboard-theme-blue .dashboard-record-artwork { width: 52px; height: 52px; border-radius: 13px 13px 13px 5px; }
+  .dashboard-theme-blue .dashboard-record-rich-main { gap: 5px; }
+  .dashboard-theme-blue .dashboard-record-titleline > strong { flex-basis: 120px; font-size: 12px; }
+  .dashboard-severity-chip, .dashboard-record-kind-chip { min-height: 19px; padding: 3px 6px; font-size: 8px; }
+  .dashboard-record-summary-line { font-size: 9px; }
+  .dashboard-record-summary-line time { font-size: 9px; }
+  .dashboard-theme-blue .dashboard-record-location { font-size: 9px; }
+  .dashboard-record-state-line .dashboard-status, .dashboard-record-summary-line .dashboard-status { font-size: 8px; }
+  .dashboard-record-officers { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+  .dashboard-record-officers > span { font-size: 9px; }
+}

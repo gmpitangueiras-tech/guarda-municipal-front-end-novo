@@ -8,9 +8,11 @@ import {
   MapPin,
   RefreshCw,
   UserRound,
+  UsersRound,
 } from "lucide-react";
-import type { ApproachPreview, DashboardData, OccurrencePreview } from "@/lib/dashboard";
+import type { ApproachPreview, DashboardData, OccurrencePreview, PrivateImageReference } from "@/lib/dashboard";
 import { isManagementRole } from "@/lib/dashboard";
+import PrivateRecordThumbnail from "@/components/PrivateRecordThumbnail";
 
 const BOMOBILE_URL = `${window.location.origin}/bomobile/`;
 
@@ -81,49 +83,96 @@ function occurrenceStatus(item: OccurrencePreview) {
   return humanizeStatus(item.status, "Em acompanhamento");
 }
 
+function readableRecordType(value: string | null | undefined, fallback: string) {
+  const normalized = value?.trim().replaceAll("_", " ").replace(/\s+/g, " ");
+  if (!normalized) return fallback;
+  return normalized.toLocaleLowerCase("pt-BR").replace(/(^|[\s-])(\p{L})/gu, (_match, separator: string, letter: string) =>
+    `${separator}${letter.toLocaleUpperCase("pt-BR")}`,
+  );
+}
+
+function officerSupportLabel(supportName: string | null, supportAssigned: boolean) {
+  return supportName?.trim() || (supportAssigned ? "GM indisponível" : "Apoio não informado");
+}
+
+function OfficerDetails({
+  creatorName,
+  supportName,
+  supportAssigned,
+}: {
+  creatorName: string | null;
+  supportName: string | null;
+  supportAssigned: boolean;
+}) {
+  return (
+    <div className="dashboard-record-officers">
+      <span><UserRound size={12} aria-hidden="true" /><span>Criado por <strong>{creatorName?.trim() || "GM não identificado"}</strong></span></span>
+      <span><UsersRound size={12} aria-hidden="true" /><span>Apoio <strong>{officerSupportLabel(supportName, supportAssigned)}</strong></span></span>
+    </div>
+  );
+}
+
+function RecordArtwork({ photo, kind }: { photo: PrivateImageReference | null; kind: "occurrence" | "person" | "vehicle" }) {
+  const fallback = kind === "occurrence"
+    ? <ClipboardList size={21} aria-hidden="true" />
+    : kind === "person"
+      ? <UserRound size={21} aria-hidden="true" />
+      : <CarFront size={21} aria-hidden="true" />;
+  return <PrivateRecordThumbnail photo={photo} fallback={fallback} />;
+}
+
 function occurrenceLocation(item: OccurrencePreview) {
   const parts = [item.local_ocorrencia?.trim(), item.bairro_ocorrencia?.trim()].filter(Boolean);
   return parts.length ? parts.join(" · ") : "Local não informado";
 }
 
 function OccurrenceCard({ item }: { item: OccurrencePreview }) {
-  const pending = item.status === "pending_sync";
   const status = occurrenceStatus(item);
+  const dateValue = item.data_hora_inicio || item.criado_em;
+  const type = readableRecordType(item.tipo_ocorrencia || item.sub_tipo_ocorrencia, "Ocorrência registrada");
   return (
-    <li className="dashboard-record-row">
-      <span className={`dashboard-record-icon ${pending ? "is-pending" : ""}`} aria-hidden="true">
-        {pending ? <RefreshCw size={17} /> : <ClipboardList size={17} />}
-      </span>
-      <span className="dashboard-record-main">
-        <strong>{item.tipo_ocorrencia || item.sub_tipo_ocorrencia || "Ocorrência registrada"}</strong>
-        <span>{occurrenceNumber(item)}{item.gravidade ? ` · ${item.gravidade}` : ""}</span>
-        <small><MapPin size={12} aria-hidden="true" /> {occurrenceLocation(item)}</small>
-      </span>
-      <span className="dashboard-record-meta">
-        <span className={`dashboard-status ${statusTone(item.cancelado_em ? "cancelled" : item.status)}`}>{status}</span>
-        <small>{formatDate(item.data_hora_inicio || item.criado_em)}</small>
-      </span>
+    <li className="dashboard-record-row dashboard-record-rich">
+      <RecordArtwork photo={item.photo} kind="occurrence" />
+      <div className="dashboard-record-main dashboard-record-rich-main">
+        <div className="dashboard-record-titleline">
+          <strong>{type}</strong>
+          <span className="dashboard-severity-chip">Gravidade · {readableRecordType(item.gravidade, "Não informada")}</span>
+        </div>
+        <div className="dashboard-record-summary-line">
+          <span className="dashboard-record-number">{occurrenceNumber(item)}</span>
+          <time dateTime={dateValue || undefined}>{formatDate(dateValue)}</time>
+        </div>
+        <div className="dashboard-record-location"><MapPin size={13} aria-hidden="true" /><span>{occurrenceLocation(item)}</span></div>
+        <div className="dashboard-record-state-line">
+          <span className={`dashboard-status ${statusTone(item.cancelado_em ? "cancelled" : item.status)}`}>{status}</span>
+        </div>
+        <OfficerDetails creatorName={item.creatorName} supportName={item.supportName} supportAssigned={item.supportAssigned} />
+      </div>
     </li>
   );
 }
 
 function ApproachCard({ item }: { item: ApproachPreview }) {
   const person = item.kind === "pessoa";
-  const status = humanizeStatus(item.status_abordagem || item.fase, "Registrada");
+  const kindLabel = `Abordagem de ${person ? "pessoa" : "veículo"}`;
+  const title = readableRecordType(item.tipo_atendimento || item.tipo_abordagem, kindLabel);
+  const situation = item.fase || item.status_abordagem || item.status_regularizacao;
+  const dateValue = item.data_hora_inicio || item.criado_em;
   return (
-    <li className="dashboard-record-row">
-      <span className="dashboard-record-icon" aria-hidden="true">
-        {person ? <UserRound size={17} /> : <CarFront size={17} />}
-      </span>
-      <span className="dashboard-record-main">
-        <strong>Abordagem de {person ? "pessoa" : "veículo"}</strong>
-        <span>{item.tipo_atendimento || item.tipo_abordagem || "Atendimento registrado"}</span>
-        <small><MapPin size={12} aria-hidden="true" /> {item.local_abordagem?.trim() || "Local não informado"}</small>
-      </span>
-      <span className="dashboard-record-meta">
-        <span className={`dashboard-status ${statusTone(item.status_abordagem || item.fase)}`}>{status}</span>
-        <small>{formatDate(item.data_hora_inicio || item.criado_em)}</small>
-      </span>
+    <li className="dashboard-record-row dashboard-record-rich">
+      <RecordArtwork photo={item.photo} kind={person ? "person" : "vehicle"} />
+      <div className="dashboard-record-main dashboard-record-rich-main">
+        <div className="dashboard-record-titleline">
+          <strong>{title}</strong>
+          <span className="dashboard-record-kind-chip">{kindLabel}</span>
+        </div>
+        <div className="dashboard-record-summary-line">
+          <span className={`dashboard-status ${statusTone(situation)}`}>{humanizeStatus(situation, "Situação não informada")}</span>
+          <time dateTime={dateValue || undefined}>{formatDate(dateValue)}</time>
+        </div>
+        <div className="dashboard-record-location"><MapPin size={13} aria-hidden="true" /><span>{item.local_abordagem?.trim() || "Local não informado"}</span></div>
+        <OfficerDetails creatorName={item.creatorName} supportName={item.supportName} supportAssigned={item.supportAssigned} />
+      </div>
     </li>
   );
 }
