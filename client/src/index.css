@@ -1270,3 +1270,72 @@ input:focus-visible {
   .dashboard-menu-backdrop,
   .dashboard-menu-sheet { animation: none; }
 }
+
+
+/* Experimento de identidade azul: aplicado apenas à tela de login (Home). */
+.login-theme-blue {
+  --ink: #1b2c3e;
+  --muted: #65778a;
+  --forest: #173f68;
+  --forest-deep: #0c2948;
+  --mint: #e1ebf5;
+  --accent: #c9a565;
+  --line: #d8e3ee;
+  color: var(--ink);
+  background: #f3f7fb;
+}
+.login-theme-blue .login-hero {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(135, 176, 216, .2), transparent 31%),
+    linear-gradient(146deg, #173f68 0%, #0c2948 100%);
+}
+.login-theme-blue .brand-lockup small { color: #c3d5e8; }
+.login-theme-blue .brand-mark {
+  border-color: rgba(255,255,255,.58);
+  box-shadow: 0 10px 30px rgba(4, 23, 43, .22);
+}
+.login-theme-blue .eyebrow:not(.eyebrow-light) { color: #55799d; }
+.login-theme-blue .eyebrow-light { color: #c0d4e9; }
+.login-theme-blue .hero-copy h1 span { color: #a9c6e1; }
+.login-theme-blue .hero-copy p:not(.eyebrow),
+.login-theme-blue .hero-trust span { color: #d1deeb; }
+.login-theme-blue .hero-trust { border-top-color: rgba(219, 234, 248, .24); }
+.login-theme-blue .hero-orbit { border-color: rgba(207, 226, 244, .12); }
+.login-theme-blue .hero-orbit::after { box-shadow: 0 0 0 8px rgba(201, 165, 101, .12); }
+.login-theme-blue .field-group label,
+.login-theme-blue .field-label-row label,
+.login-theme-blue .choice-fieldset legend { color: #2b3c4f; }
+.login-theme-blue .input-wrap { color: #7f91a4; }
+.login-theme-blue .input-wrap:focus-within {
+  border-color: #5d85ad;
+  box-shadow: 0 0 0 4px rgba(65, 112, 160, .14);
+}
+.login-theme-blue .input-wrap input { color: #1b2c3e; }
+.login-theme-blue .icon-button { color: #6f8295; }
+.login-theme-blue .icon-button:hover { color: #153e68; background: #e5eef7; }
+.login-theme-blue .field-hint { color: #7d8da0; }
+.login-theme-blue .text-button,
+.login-theme-blue .login-footer button { color: #285f91; }
+.login-theme-blue .text-button:hover,
+.login-theme-blue .login-footer button:hover { color: #123c66; }
+.login-theme-blue .submit-button {
+  background: linear-gradient(112deg, #1c4f7d, #12385f);
+  box-shadow: 0 14px 24px rgba(23, 63, 104, .18);
+}
+.login-theme-blue .submit-button:hover:not(:disabled) {
+  background: linear-gradient(112deg, #245f92, #173f68);
+  box-shadow: 0 16px 30px rgba(23, 63, 104, .23);
+}
+.login-theme-blue .privacy-note { color: #718195; }
+.login-theme-blue button:focus-visible,
+.login-theme-blue input:focus-visible { outline-color: rgba(58, 108, 157, .48); }
+.login-theme-blue .login-waiting {
+  border-color: #d4e2ef;
+  background: linear-gradient(120deg, #f1f7fc, #fffdf8);
+}
+.login-theme-blue .login-waiting-emblem { box-shadow: 0 5px 16px rgba(23, 63, 104, .1); }
+.login-theme-blue .login-waiting-ring { border-right-color: rgba(31, 81, 127, .25); }
+.login-theme-blue .login-waiting-copy span,
+.login-theme-blue .login-waiting small { color: #718297; }
+.login-theme-blue .login-waiting-track { background: #e1ebf4; }
+.login-theme-blue .login-waiting-track span { background: linear-gradient(90deg, #235b8c, #83a9cc, var(--accent)); }

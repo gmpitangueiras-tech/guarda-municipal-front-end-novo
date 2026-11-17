@@ -74,7 +74,7 @@ export default function Home({ notice, onLoginSuccess, onFirstAccess, onResetReq
   }
 
   return (
-    <main className="login-shell">
+    <main className="login-shell login-theme-blue">
       <section className="login-hero" aria-labelledby="login-title">
         <div className="hero-orbit hero-orbit-one" aria-hidden="true" />
         <div className="hero-orbit hero-orbit-two" aria-hidden="true" />
