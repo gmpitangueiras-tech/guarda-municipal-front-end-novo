@@ -232,3 +232,15 @@ export async function setNewPassword(password: string): Promise<{ success: boole
 export async function signOut(): Promise<void> {
   if (supabase) await supabase.auth.signOut({ scope: "local" });
 }
+
+/** Recupera o perfil funcional ligado à sessão Supabase atual. */
+export async function getAuthenticatedProfile(): Promise<PerfilFuncional | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase.rpc("gm_my_profile");
+  if (error) {
+    console.error("Não foi possível recuperar o perfil funcional:", error);
+    return null;
+  }
+  const profile = toProfile(data as Partial<PerfilFuncional> | null);
+  return profile?.status === "ativo" ? profile : null;
+}

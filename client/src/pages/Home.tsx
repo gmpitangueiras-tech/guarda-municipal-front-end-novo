@@ -9,7 +9,7 @@ import {
   LockKeyhole,
   ShieldCheck,
 } from "lucide-react";
-import { loginWithCpf } from "@/lib/auth";
+import { loginWithCpf, type PerfilFuncional } from "@/lib/auth";
 import { formatCpf } from "@/lib/cpf";
 import brasaoGuarda from "@/assets/brasao-guarda-pitangueiras.png";
 
@@ -20,11 +20,12 @@ type Feedback = {
 
 type HomeProps = {
   notice?: string | null;
+  onLoginSuccess: (profile: PerfilFuncional) => void;
   onFirstAccess: (profile: { email?: string | null; name?: string | null; cpf?: string | null }) => void;
   onResetRequest: () => void;
 };
 
-export default function Home({ notice, onFirstAccess, onResetRequest }: HomeProps) {
+export default function Home({ notice, onLoginSuccess, onFirstAccess, onResetRequest }: HomeProps) {
   const [cpf, setCpf] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -44,28 +45,28 @@ export default function Home({ notice, onFirstAccess, onResetRequest }: HomeProp
     }
 
     setIsLoading(true);
-    const result = await loginWithCpf(cpf, password);
-    setIsLoading(false);
+    try {
+      const result = await loginWithCpf(cpf, password);
+      if (!result.success) {
+        setFeedback({ type: "error", message: result.error });
+        return;
+      }
 
-    if (!result.success) {
+      const { profile, precisaPrimeiroAcesso } = result;
+      if (precisaPrimeiroAcesso) {
+        onFirstAccess({ email: profile.email, name: profile.nome_completo, cpf });
+        return;
+      }
+
+      onLoginSuccess(profile);
+    } catch {
       setFeedback({
         type: "error",
-        message: result.error,
+        message: "Não foi possível concluir o acesso. Verifique sua conexão e tente novamente.",
       });
-      return;
+    } finally {
+      setIsLoading(false);
     }
-
-    const { profile, precisaPrimeiroAcesso } = result;
-
-    if (precisaPrimeiroAcesso) {
-      onFirstAccess({ email: profile.email, name: profile.nome_completo, cpf });
-      return;
-    }
-
-    setFeedback({
-      type: "success",
-      message: `Acesso autorizado${profile.apelido ? `, ${profile.apelido}` : ""}. Estamos preparando seu atendimento.`,
-    });
   }
 
   function handleForgotPassword() {
@@ -125,7 +126,7 @@ export default function Home({ notice, onFirstAccess, onResetRequest }: HomeProp
             <p>Use suas credenciais funcionais para continuar.</p>
           </div>
 
-          <form className="login-form" onSubmit={handleSubmit} noValidate>
+          <form className="login-form" onSubmit={handleSubmit} noValidate aria-busy={isLoading}>
             <div className="field-group">
               <label htmlFor="cpf">CPF</label>
               <div className="input-wrap">
@@ -138,6 +139,7 @@ export default function Home({ notice, onFirstAccess, onResetRequest }: HomeProp
                   inputMode="numeric"
                   placeholder="000.000.000-00"
                   value={cpf}
+                  disabled={isLoading}
                   onChange={(event) => setCpf(formatCpf(event.target.value))}
                   aria-describedby="cpf-hint"
                   required
@@ -168,6 +170,7 @@ export default function Home({ notice, onFirstAccess, onResetRequest }: HomeProp
                   autoComplete="current-password"
                   placeholder="DDMMAAAA ou sua senha pessoal"
                   value={password}
+                  disabled={isLoading}
                   onChange={(event) => setPassword(event.target.value)}
                   aria-describedby="password-hint"
                   required
@@ -175,6 +178,7 @@ export default function Home({ notice, onFirstAccess, onResetRequest }: HomeProp
                 <button
                   className="icon-button"
                   type="button"
+                  disabled={isLoading}
                   onClick={() => setShowPassword((current) => !current)}
                   aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                   aria-pressed={showPassword}
@@ -187,7 +191,22 @@ export default function Home({ notice, onFirstAccess, onResetRequest }: HomeProp
               </span>
             </div>
 
-            {feedback && (
+            {isLoading && (
+              <div className="login-waiting" role="status" aria-live="polite" aria-atomic="true">
+                <div className="login-waiting-emblem" aria-hidden="true">
+                  <img src={brasaoGuarda} alt="" />
+                  <span className="login-waiting-ring" />
+                </div>
+                <div className="login-waiting-copy">
+                  <strong>Aguardando validação do login</strong>
+                  <span>Estamos conferindo seu acesso com segurança.</span>
+                </div>
+                <div className="login-waiting-track" aria-hidden="true"><span /></div>
+                <small>Isso pode levar alguns instantes. Não feche esta página.</small>
+              </div>
+            )}
+
+            {feedback && !isLoading && (
               <div
                 className={`form-feedback ${feedback.type}`}
                 role={feedback.type === "error" ? "alert" : "status"}
@@ -202,8 +221,8 @@ export default function Home({ notice, onFirstAccess, onResetRequest }: HomeProp
             )}
 
             <button className="submit-button" type="submit" disabled={isLoading}>
-              <span>{isLoading ? "Entrando..." : "Entrar na minha conta"}</span>
-              {!isLoading && <ArrowRight size={19} aria-hidden="true" />}
+              <span>{isLoading ? "Validando seu acesso..." : "Entrar na minha conta"}</span>
+              {isLoading ? <span className="button-loader" aria-hidden="true" /> : <ArrowRight size={19} aria-hidden="true" />}
             </button>
           </form>
 
