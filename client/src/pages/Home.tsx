@@ -17,7 +17,11 @@ type Feedback = {
   message: string;
 } | null;
 
-export default function Home() {
+type HomeProps = {
+  onFirstAccess: (profile: { email?: string | null; name?: string | null }) => void;
+};
+
+export default function Home({ onFirstAccess }: HomeProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -46,7 +50,7 @@ export default function Home() {
     }
 
     setIsLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data: authData, error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     });
@@ -57,6 +61,25 @@ export default function Home() {
         type: "error",
         message: "Não foi possível entrar. Confira seus dados e tente novamente.",
       });
+      return;
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("usuarios")
+      .select("nome_completo,email,status,primeiro_acesso")
+      .eq("auth_user_id", authData.user.id)
+      .maybeSingle();
+
+    if (profileError || !profile) {
+      setFeedback({
+        type: "error",
+        message: "Sua conta foi autenticada, mas o perfil funcional não foi localizado.",
+      });
+      return;
+    }
+
+    if (profile.primeiro_acesso || profile.status === "primeiro_acesso") {
+      onFirstAccess({ email: profile.email ?? email.trim(), name: profile.nome_completo });
       return;
     }
 
@@ -204,12 +227,6 @@ export default function Home() {
             </button>
           </form>
 
-          <div className="login-footer">
-            <span className="footer-line" aria-hidden="true" />
-            <p>
-              Ainda não possui acesso? <button type="button" onClick={() => setFeedback({ type: "success", message: "O cadastro será disponibilizado na próxima etapa." })}>Solicite seu cadastro</button>
-            </p>
-          </div>
         </div>
 
         <p className="privacy-note">

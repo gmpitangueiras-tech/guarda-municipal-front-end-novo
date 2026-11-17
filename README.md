@@ -4,6 +4,8 @@ Novo front-end mobile-first da Guarda Municipal de Pitangueiras/PR. Este projeto
 
 A aplicação usa o mesmo projeto Supabase do sistema atual e contém apenas a interface de login nesta primeira etapa. A chave incluída em `.env.production` é uma chave publicável, própria para uso no navegador; nenhuma chave de serviço foi incluída.
 
+Depois da autenticação, o front-end consulta o perfil em `public.usuarios`. Contas com `primeiro_acesso = true` ou status `primeiro_acesso` são direcionadas para a complementação cadastral. Nome Completo, CPF, Data de Nascimento e E-mail são obrigatórios; Telefone, Matrícula e Apelido operacional são opcionais.
+
 ## GitHub Pages
 
 Após o primeiro deploy, o endereço será:

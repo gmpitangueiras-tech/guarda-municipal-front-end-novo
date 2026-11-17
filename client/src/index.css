@@ -104,8 +104,8 @@ input:focus-visible {
 
 .brand-mark {
   display: grid;
-  width: 58px;
-  height: 58px;
+  width: 88px;
+  height: 88px;
   place-items: center;
   flex: 0 0 auto;
   border: 1px solid rgba(255, 255, 255, 0.38);
@@ -115,9 +115,14 @@ input:focus-visible {
 }
 
 .brand-mark img {
-  width: 48px;
-  height: 48px;
+  width: 74px;
+  height: 74px;
   object-fit: contain;
+}
+
+.brand-mark-featured {
+  border-radius: 24px 24px 24px 8px;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.2);
 }
 
 .hero-copy {
@@ -245,6 +250,10 @@ input:focus-visible {
   margin: 0 auto;
 }
 
+.first-access-card {
+  max-width: 560px;
+}
+
 .login-heading {
   margin-bottom: 38px;
 }
@@ -268,6 +277,16 @@ input:focus-visible {
 .login-form {
   display: grid;
   gap: 25px;
+}
+
+.profile-form {
+  gap: 20px;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
 }
 
 .field-group {
@@ -511,13 +530,13 @@ input:focus-visible {
   }
 
   .brand-mark {
-    width: 52px;
-    height: 52px;
+    width: 72px;
+    height: 72px;
   }
 
   .brand-mark img {
-    width: 43px;
-    height: 43px;
+    width: 60px;
+    height: 60px;
   }
 
   .hero-copy {
@@ -549,6 +568,11 @@ input:focus-visible {
     align-items: flex-start;
     flex-direction: column;
     gap: 7px;
+  }
+
+  .profile-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
   }
 }
 
