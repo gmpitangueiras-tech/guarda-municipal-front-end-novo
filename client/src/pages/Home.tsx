@@ -19,15 +19,17 @@ type Feedback = {
 } | null;
 
 type HomeProps = {
-  onFirstAccess: (profile: { email?: string | null; name?: string | null }) => void;
+  notice?: string | null;
+  onFirstAccess: (profile: { email?: string | null; name?: string | null; cpf?: string | null }) => void;
+  onResetRequest: () => void;
 };
 
-export default function Home({ onFirstAccess }: HomeProps) {
+export default function Home({ notice, onFirstAccess, onResetRequest }: HomeProps) {
   const [cpf, setCpf] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [feedback, setFeedback] = useState<Feedback>(null);
+  const [feedback, setFeedback] = useState<Feedback>(notice ? { type: "success", message: notice } : null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -36,7 +38,7 @@ export default function Home({ onFirstAccess }: HomeProps) {
     if (!cpf.trim() || !password) {
       setFeedback({
         type: "error",
-        message: "Informe seu CPF e sua senha para continuar.",
+        message: "Informe seu CPF e sua data de nascimento (ou senha pessoal) para continuar.",
       });
       return;
     }
@@ -53,10 +55,10 @@ export default function Home({ onFirstAccess }: HomeProps) {
       return;
     }
 
-    const { profile } = result;
+    const { profile, precisaPrimeiroAcesso } = result;
 
-    if (profile.primeiro_acesso === true || profile.status === "primeiro_acesso") {
-      onFirstAccess({ email: profile.email, name: profile.nome_completo });
+    if (precisaPrimeiroAcesso) {
+      onFirstAccess({ email: profile.email, name: profile.nome_completo, cpf });
       return;
     }
 
@@ -67,10 +69,7 @@ export default function Home({ onFirstAccess }: HomeProps) {
   }
 
   function handleForgotPassword() {
-    setFeedback({
-      type: "success",
-      message: "A recuperação de senha será adicionada na próxima etapa.",
-    });
+    onResetRequest();
   }
 
   return (
@@ -151,13 +150,13 @@ export default function Home({ onFirstAccess }: HomeProps) {
 
             <div className="field-group">
               <div className="field-label-row">
-                <label htmlFor="password">Senha</label>
+                <label htmlFor="password">Data de nascimento ou senha</label>
                 <button
                   className="text-button"
                   type="button"
                   onClick={handleForgotPassword}
                 >
-                  Esqueci minha senha
+                  Redefinir senha
                 </button>
               </div>
               <div className="input-wrap">
@@ -167,9 +166,10 @@ export default function Home({ onFirstAccess }: HomeProps) {
                   name="password"
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
-                  placeholder="Digite sua senha"
+                  placeholder="DDMMAAAA ou sua senha pessoal"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
+                  aria-describedby="password-hint"
                   required
                 />
                 <button
@@ -182,6 +182,9 @@ export default function Home({ onFirstAccess }: HomeProps) {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
+              <span className="field-hint" id="password-hint">
+                Digite a data de nascimento (DDMMAAAA) ou a senha pessoal criada no primeiro acesso.
+              </span>
             </div>
 
             {feedback && (

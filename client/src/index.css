@@ -599,3 +599,84 @@ input:focus-visible {
     animation-duration: 0.01ms !important;
   }
 }
+
+/* Credencial do primeiro acesso e navegação das telas de recuperação */
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 18px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.back-button:hover {
+  color: var(--forest-deep);
+  text-decoration: none;
+}
+.choice-fieldset {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.choice-fieldset legend {
+  margin-bottom: 10px;
+  padding: 0;
+  color: #2e3b36;
+  font-size: 13px;
+  font-weight: 750;
+}
+.choice-option {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.choice-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.choice-option.is-selected {
+  border-color: var(--forest);
+  background: #f6faf7;
+  box-shadow: 0 0 0 3px rgba(18, 59, 53, 0.08);
+}
+.choice-option:has(input:focus-visible) {
+  outline: 3px solid rgba(239, 169, 75, 0.55);
+  outline-offset: 2px;
+}
+.choice-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--mint);
+  color: var(--forest);
+}
+.choice-text {
+  display: grid;
+  gap: 3px;
+}
+.choice-text strong {
+  color: #1f2b27;
+  font-size: 13.5px;
+}
+.choice-text small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
