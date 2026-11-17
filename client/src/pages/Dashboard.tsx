@@ -18,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import type { PerfilFuncional } from "@/lib/auth";
+import DashboardBottomNav from "@/components/DashboardBottomNav";
 import {
   loadDashboardData,
   setAllNotificationReadState,
@@ -370,7 +371,7 @@ export default function Dashboard({ profile, onSignOut }: DashboardProps) {
           </a>
         )}
 
-        <section className="dashboard-section" aria-labelledby="dashboard-actions-title">
+        <section className="dashboard-section dashboard-quick-actions" aria-labelledby="dashboard-actions-title">
           <div className="dashboard-section-heading">
             <div><p className="dashboard-eyebrow">ACESSO RÁPIDO</p><h2 id="dashboard-actions-title">O que você precisa fazer?</h2></div>
             <span className="dashboard-section-note">As telas de registro abrem no aplicativo operacional.</span>
@@ -424,6 +425,11 @@ export default function Dashboard({ profile, onSignOut }: DashboardProps) {
           <a href={`${BOMOBILE_URL}#notificacoes`}>Central de notificações</a>
         </footer>
       </div>
+      <DashboardBottomNav
+        profile={profile}
+        onSignOut={onSignOut}
+        onOpenNotifications={() => setNotificationsOpen(true)}
+      />
     </main>
   );
 }
