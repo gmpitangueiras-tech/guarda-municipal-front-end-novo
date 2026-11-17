@@ -32,7 +32,7 @@ export default function AuthShell({
   onBack,
 }: AuthShellProps) {
   return (
-    <main className="login-shell">
+    <main className="login-shell login-theme-blue">
       <section className="login-hero" aria-labelledby="auth-title">
         <div className="hero-orbit hero-orbit-one" aria-hidden="true" />
         <div className="hero-orbit hero-orbit-two" aria-hidden="true" />

@@ -60,7 +60,7 @@ Defina o secret `RESEND_API_KEY` no projeto (Edge Functions → Secrets). A fun�
 
 - gerar o link com `generateLink` (`token_hash`), sem depender de `redirect_to`;
 - montar o HTML de [`password-reset-request/email-template.ts`](./functions/password-reset-request/email-template.ts)
-  (brasão, verde institucional `#123b35`, dourado `#efa94b`, aviso de segurança e versão texto);
+  (brasão, azul institucional `#173f68`, azul profundo `#0c2948`, dourado `#c9a565`, aviso de segurança e versão texto);
 - enviar pela API do Resend com o remetente de `MAIL_FROM` (padrão `Guarda Municipal de Pitangueiras <nao-responda@gm-pitangueiras.invalid>`).
 
 Variáveis opcionais: `MAIL_FROM`, `SITE_URL` (padrão: a URL do Pages).

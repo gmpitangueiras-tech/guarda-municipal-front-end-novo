@@ -106,7 +106,7 @@ export default function FirstAccess({
   }
 
   return (
-    <main className="login-shell first-access-shell">
+    <main className="login-shell first-access-shell login-theme-blue">
       <section className="login-hero" aria-labelledby="first-access-title">
         <div className="hero-orbit hero-orbit-one" aria-hidden="true" />
         <div className="hero-orbit hero-orbit-two" aria-hidden="true" />
