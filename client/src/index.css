@@ -480,23 +480,31 @@ input:focus-visible {
 
   .hero-content {
     min-height: 0;
-    padding: 20px 24px 24px;
+    align-items: center;
+    padding: 24px 20px 28px;
   }
 
   .brand-lockup {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 9px;
+    align-items: center;
+    gap: 10px;
+    text-align: center;
   }
 
   .brand-mark {
-    width: 96px;
-    height: 96px;
+    width: 138px;
+    height: 138px;
+    border-radius: 32px 32px 32px 10px;
   }
 
   .brand-mark img {
-    width: 82px;
-    height: 82px;
+    width: 118px;
+    height: 118px;
+  }
+
+  .login-shell:not(.first-access-shell) .hero-copy,
+  .login-shell:not(.first-access-shell) .hero-trust {
+    display: none;
   }
 
   .hero-copy {
@@ -531,7 +539,7 @@ input:focus-visible {
 
   .login-panel {
     min-height: auto;
-    padding: 42px 24px 32px;
+    padding: 30px 24px 32px;
   }
 }
 
