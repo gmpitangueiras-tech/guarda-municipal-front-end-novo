@@ -193,6 +193,20 @@ Deno.serve(async (req: Request) => {
       const { error: mailError } = await mailClient.auth.resetPasswordForEmail(email, { redirectTo });
       if (mailError) {
         console.error("password-reset supabase mail failed", mailError.status ?? mailError.name);
+        if (mailError.status === 429 || /rate limit/i.test(mailError.message ?? "")) {
+          return json(req, {
+            success: false,
+            code: "email_rate_limited",
+            error: "O limite de envio de e-mails do serviço foi atingido. Aguarde alguns minutos e tente novamente.",
+          }, 429);
+        }
+        if (/invalid/i.test(mailError.message ?? "")) {
+          return json(req, {
+            success: false,
+            code: "email_rejected",
+            error: "O serviço recusou este endereço de e-mail. Confira o e-mail cadastrado com o administrador.",
+          }, 422);
+        }
         return json(req, { success: false, error: "Não foi possível enviar o e-mail agora. Tente novamente." }, 503);
       }
     }
