@@ -152,7 +152,8 @@ export function privateImageReference(value: unknown): PrivateImageReference | n
   if (!encodedPath) return null;
   try {
     const segments = encodedPath.split("/").map((segment) => decodeURIComponent(segment));
-    if (segments.length < 3 || segments.some((segment) =>
+    // Approach uploads can use a folder/file key with only two path segments.
+    if (segments.length < 2 || segments.some((segment) =>
       !segment || segment === "." || segment === ".." || segment.includes("/") || segment.includes("\\") || segment.includes("\0")
     )) return null;
     return { bucket: PHOTO_BUCKET, path: segments.join("/") };
