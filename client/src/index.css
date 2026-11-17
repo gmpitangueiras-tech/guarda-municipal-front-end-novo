@@ -1521,3 +1521,13 @@ input:focus-visible {
   border-color: #c7d9e9;
   background: #f0f6fb;
 }
+
+
+.dashboard-activity-grid.dashboard-activity-grid-manager {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.dashboard-activity-grid-manager .dashboard-panel-wide { grid-column: 1 / -1; }
+@media (max-width: 980px) {
+  .dashboard-activity-grid.dashboard-activity-grid-manager { grid-template-columns: 1fr; }
+  .dashboard-activity-grid-manager .dashboard-panel-wide { grid-column: auto; }
+}

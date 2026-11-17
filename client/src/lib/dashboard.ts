@@ -38,6 +38,8 @@ export type DashboardNotification = {
 export type DashboardData = {
   occurrences: OccurrencePreview[];
   pendingSyncCount: number;
+  peopleApproaches: ApproachPreview[];
+  vehicleApproaches: ApproachPreview[];
   approaches: ApproachPreview[];
   notifications: DashboardNotification[];
   unreadCount: number;
@@ -56,6 +58,7 @@ async function getParticipatedOccurrenceIds(profileId: string): Promise<string[]
       .from("ocorrencia_guardas")
       .select("ocorrencia_id")
       .eq("guarda_id", profileId)
+      .eq("esta_ativo", true)
       .order("criado_em", { ascending: false })
       .range(offset, offset + PAGE_SIZE - 1);
     if (error) throw error;
@@ -120,32 +123,41 @@ function sortByRecent<T extends { data_hora_inicio?: string | null; criado_em?: 
   });
 }
 
-export async function loadDashboardData(profileId: string): Promise<DashboardData> {
+export async function loadDashboardData(profileId: string, profileRole: string | null): Promise<DashboardData> {
   if (!supabase) throw new Error("Serviço de dados indisponível.");
 
-  const [participatedIds, pendingRows, ownOccurrencesResult, peopleResult, vehiclesResult, notificationResult, unreadResult] =
+  const isTeamOverview = ["admin", "supervisor"].includes((profileRole ?? "").trim().toLowerCase());
+  const occurrenceBaseQuery = supabase.from("ocorrencias").select(OCCURRENCE_FIELDS);
+  const occurrenceQuery = isTeamOverview
+    ? occurrenceBaseQuery
+    : occurrenceBaseQuery.eq("criado_por", profileId);
+  const peopleBaseQuery = supabase
+    .from("abordagens_pessoas")
+    .select("id,criado_em,data_hora_inicio,local_abordagem,tipo_abordagem,tipo_atendimento,fase");
+  const peopleQuery = isTeamOverview
+    ? peopleBaseQuery
+    : peopleBaseQuery.or(`criado_por.eq.${profileId},guarda_apoio_id.eq.${profileId}`);
+  const vehiclesBaseQuery = supabase
+    .from("abordagens_veiculos")
+    .select("id,criado_em,data_hora_inicio,local_abordagem,tipo_abordagem,tipo_atendimento,fase");
+  const vehiclesQuery = isTeamOverview
+    ? vehiclesBaseQuery
+    : vehiclesBaseQuery.or(`criado_por.eq.${profileId},guarda_apoio_id.eq.${profileId}`);
+
+  const [participatedIds, pendingRows, occurrencesResult, peopleResult, vehiclesResult, notificationResult, unreadResult] =
     await Promise.all([
-      getParticipatedOccurrenceIds(profileId),
+      isTeamOverview ? Promise.resolve([] as string[]) : getParticipatedOccurrenceIds(profileId),
       getPendingSyncRows(),
-      supabase
-        .from("ocorrencias")
-        .select(OCCURRENCE_FIELDS)
-        .eq("criado_por", profileId)
+      occurrenceQuery
         .is("deleted_at", null)
         .order("data_hora_inicio", { ascending: false })
         .limit(6),
-      supabase
-        .from("abordagens_pessoas")
-        .select("id,criado_em,data_hora_inicio,local_abordagem,tipo_abordagem,tipo_atendimento,fase")
-        .or(`criado_por.eq.${profileId},guarda_apoio_id.eq.${profileId}`)
+      peopleQuery
         .order("criado_em", { ascending: false })
-        .limit(4),
-      supabase
-        .from("abordagens_veiculos")
-        .select("id,criado_em,data_hora_inicio,local_abordagem,tipo_abordagem,tipo_atendimento,fase")
-        .or(`criado_por.eq.${profileId},guarda_apoio_id.eq.${profileId}`)
+        .limit(isTeamOverview ? 6 : 4),
+      vehiclesQuery
         .order("criado_em", { ascending: false })
-        .limit(4),
+        .limit(isTeamOverview ? 6 : 4),
       supabase
         .from("notificacoes")
         .select("id,titulo,mensagem,tipo,lida,link,criado_em")
@@ -159,23 +171,23 @@ export async function loadDashboardData(profileId: string): Promise<DashboardDat
         .or("lida.is.null,lida.eq.false"),
     ]);
 
-  for (const result of [ownOccurrencesResult, peopleResult, vehiclesResult, notificationResult, unreadResult]) {
+  for (const result of [occurrencesResult, peopleResult, vehiclesResult, notificationResult, unreadResult]) {
     if (result.error) throw result.error;
   }
 
-  const participatedOccurrences = await getParticipatedOccurrences(participatedIds);
+  const participatedOccurrences = isTeamOverview ? [] : await getParticipatedOccurrences(participatedIds);
   const occurrencesById = new Map<string, OccurrencePreview>();
   for (const occurrence of [
-    ...((ownOccurrencesResult.data ?? []) as OccurrencePreview[]),
+    ...((occurrencesResult.data ?? []) as OccurrencePreview[]),
     ...participatedOccurrences,
   ]) {
     occurrencesById.set(occurrence.id, occurrence);
   }
-  const occurrences = sortByRecent([...occurrencesById.values()]).slice(0, 5);
+  const occurrences = sortByRecent([...occurrencesById.values()]).slice(0, isTeamOverview ? 6 : 5);
   const participatedSet = new Set(participatedIds);
-  const pendingSyncCount = pendingRows.filter(
-    (row) => row.criado_por === profileId || participatedSet.has(row.id),
-  ).length;
+  const pendingSyncCount = isTeamOverview
+    ? pendingRows.length
+    : pendingRows.filter((row) => row.criado_por === profileId || participatedSet.has(row.id)).length;
 
   const people: ApproachPreview[] = (peopleResult.data ?? []).map((row) => ({
     ...row,
@@ -189,6 +201,8 @@ export async function loadDashboardData(profileId: string): Promise<DashboardDat
   return {
     occurrences,
     pendingSyncCount,
+    peopleApproaches: sortByRecent(people).slice(0, isTeamOverview ? 6 : 4),
+    vehicleApproaches: sortByRecent(vehicles).slice(0, isTeamOverview ? 6 : 4),
     approaches: sortByRecent([...people, ...vehicles]).slice(0, 4),
     notifications: (notificationResult.data ?? []) as DashboardNotification[],
     unreadCount: unreadResult.count ?? 0,
