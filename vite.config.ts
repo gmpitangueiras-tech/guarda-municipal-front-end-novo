@@ -5,6 +5,7 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   base: process.env.VITE_BASE_PATH || "/",
+  envDir: path.resolve(import.meta.dirname),
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
