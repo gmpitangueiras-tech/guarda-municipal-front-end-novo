@@ -1,33 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Activity,
   ArrowDownRight,
   ArrowRight,
   Bell,
-  CarFront,
   CheckCheck,
   CircleAlert,
   ClipboardList,
-  FilePlus2,
-  MapPin,
   RefreshCw,
   Shield,
   ShieldCheck,
-  UserRound,
-  UsersRound,
   X,
 } from "lucide-react";
 import type { PerfilFuncional } from "@/lib/auth";
 import DashboardBottomNav from "@/components/DashboardBottomNav";
+import DashboardActivity from "@/components/DashboardActivity";
 import {
   isManagementRole,
   loadDashboardData,
   setAllNotificationReadState,
   setNotificationReadState,
-  type ApproachPreview,
   type DashboardData,
   type DashboardNotification,
-  type OccurrencePreview,
 } from "@/lib/dashboard";
 import brasaoGuarda from "@/assets/brasao-guarda-pitangueiras.png";
 
@@ -50,18 +43,6 @@ function formatDate(value: string | null | undefined, options: Intl.DateTimeForm
     minute: "2-digit",
     ...options,
   }).format(date);
-}
-
-function occurrenceNumber(item: OccurrencePreview) {
-  return item.numero_ocorrencia || item.numero_temporario || "Registro sem número";
-}
-
-function occurrenceStatus(item: OccurrencePreview) {
-  if (item.cancelado_em) return "Cancelada";
-  if (item.status === "pending_sync") return "Pendente de sincronização";
-  if (item.status === "draft") return "Rascunho";
-  if (item.status === "synced") return "Sincronizada";
-  return item.status ? item.status.replaceAll("_", " ") : "Em acompanhamento";
 }
 
 function notificationDestination(item: DashboardNotification) {
@@ -158,75 +139,33 @@ function NotificationPanel({
   );
 }
 
-function OccurrenceCard({ item }: { item: OccurrencePreview }) {
-  const pending = item.status === "pending_sync";
-  return (
-    <li className="dashboard-record-row">
-      <span className={`dashboard-record-icon ${pending ? "is-pending" : ""}`} aria-hidden="true">
-        {pending ? <RefreshCw size={17} /> : <ClipboardList size={17} />}
-      </span>
-      <span className="dashboard-record-main">
-        <strong>{item.tipo_ocorrencia || item.sub_tipo_ocorrencia || "Ocorrência registrada"}</strong>
-        <span>{occurrenceNumber(item)}{item.bairro_ocorrencia ? ` · ${item.bairro_ocorrencia}` : ""}</span>
-        <small><MapPin size={12} aria-hidden="true" /> {item.local_ocorrencia || "Local não informado"}</small>
-      </span>
-      <span className="dashboard-record-meta">
-        <span className={`dashboard-status ${pending ? "is-pending" : ""}`}>{occurrenceStatus(item)}</span>
-        <small>{formatDate(item.data_hora_inicio)}</small>
-      </span>
-    </li>
-  );
-}
-
-function ApproachCard({ item }: { item: ApproachPreview }) {
-  const person = item.kind === "pessoa";
-  return (
-    <li className="dashboard-record-row">
-      <span className="dashboard-record-icon" aria-hidden="true">
-        {person ? <UserRound size={17} /> : <CarFront size={17} />}
-      </span>
-      <span className="dashboard-record-main">
-        <strong>Abordagem de {person ? "pessoa" : "veículo"}</strong>
-        <span>{item.tipo_atendimento || item.tipo_abordagem || "Atendimento registrado"}</span>
-        <small><MapPin size={12} aria-hidden="true" /> {item.local_abordagem || "Local não informado"}</small>
-      </span>
-      <span className="dashboard-record-meta">
-        <small>{formatDate(item.data_hora_inicio || item.criado_em)}</small>
-      </span>
-    </li>
-  );
-}
-
-function EmptyRecords({ children }: { children: string }) {
-  return (
-    <div className="dashboard-empty-records">
-      <Activity size={20} aria-hidden="true" />
-      <span>{children}</span>
-    </div>
-  );
-}
-
 export default function Dashboard({ profile, onSignOut }: DashboardProps) {
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const hasLoadedRef = useRef(false);
   const showTeamOverview = isManagementRole(profile.perfil);
 
   const refresh = useCallback(async () => {
     setError(null);
+    if (hasLoadedRef.current) setIsRefreshing(true);
+    else setIsLoading(true);
     try {
       const next = await loadDashboardData(profile.id, profile.perfil);
       setData(next);
+      hasLoadedRef.current = true;
     } catch (cause) {
       console.error("Erro ao carregar o painel do Guarda:", cause);
       setError("Não foi possível carregar seus dados agora. Verifique a conexão e tente novamente.");
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, [profile.id, profile.perfil]);
 
@@ -305,10 +244,8 @@ export default function Dashboard({ profile, onSignOut }: DashboardProps) {
   }
 
   const quickActions = [
-    { title: "Registrar ocorrência", description: "Novo registro operacional", icon: FilePlus2, route: "nova-ocorrencia", accent: "gold" },
-    { title: "Consultar ocorrências", description: "Pesquisar registros da equipe", icon: ClipboardList, route: "ocorrencias", accent: "blue" },
-    { title: "Registrar abordagem", description: "Pessoa ou veículo", icon: Shield, route: "consulta", accent: "blue" },
-    { title: "Consultar abordagens", description: "Acessar a consulta operacional", icon: UsersRound, route: "consulta", accent: "gold" },
+    { title: "Consultar ocorrências", description: "Abrir a consulta operacional", icon: ClipboardList, route: "ocorrencias" },
+    { title: "Consultar abordagens", description: "Pessoas e veículos", icon: Shield, route: "consulta" },
   ];
 
   return (
@@ -355,20 +292,21 @@ export default function Dashboard({ profile, onSignOut }: DashboardProps) {
       <div className="dashboard-content">
         <section className="dashboard-welcome">
           <div>
-            <p className="dashboard-eyebrow">PAINEL OPERACIONAL · {new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" }).format(new Date())}</p>
+            <p className="dashboard-eyebrow">{showTeamOverview ? "PAINEL DA EQUIPE" : "PAINEL INDIVIDUAL"} · {new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "numeric", month: "short" }).format(new Date())}</p>
             <h1>Bom serviço, <span>{shortName(profile)}.</span></h1>
             <p>{showTeamOverview
-              ? "Visão rápida da equipe: os seis registros mais recentes em cada categoria."
-              : "Este é seu espaço de acompanhamento. Aqui você vê as ocorrências das quais participou e seus avisos pessoais."}</p>
-          </div>
-          <div className="dashboard-profile-chip">
-            <span className="dashboard-profile-avatar"><UserRound size={21} aria-hidden="true" /></span>
-            <span><strong>{profile.apelido || profile.nome_completo || "Guarda Municipal"}</strong><small>{profile.matricula ? `Matrícula ${profile.matricula}` : profile.perfil || "GM"}</small></span>
+              ? "Acompanhe os registros mais recentes de toda a equipe."
+              : "Acompanhe suas ocorrências, abordagens e avisos pessoais."}</p>
           </div>
         </section>
 
+        {isLoading && !data && !error && (
+          <div className="dashboard-sync-checking" role="status" aria-live="polite">
+            <RefreshCw size={15} className="spin" aria-hidden="true" /> Verificando registros pendentes de sincronização…
+          </div>
+        )}
         {data && data.pendingSyncCount > 0 && (
-          <a className="dashboard-sync-alert" href={`${BOMOBILE_URL}#ocorrencias`}>
+          <a className="dashboard-sync-alert" href={`${BOMOBILE_URL}#ocorrencias`} aria-label={`${data.pendingSyncCount} registros pendentes de sincronização. Abrir ocorrências`}>
             <span className="dashboard-sync-alert-icon"><RefreshCw size={19} aria-hidden="true" /></span>
             <span><strong>{data.pendingSyncCount} registro{data.pendingSyncCount === 1 ? "" : "s"} pendente{data.pendingSyncCount === 1 ? "" : "s"} de sincronização</strong><small>Confira a situação dos registros no aplicativo operacional.</small></span>
             <ArrowRight size={18} aria-hidden="true" />
@@ -377,14 +315,14 @@ export default function Dashboard({ profile, onSignOut }: DashboardProps) {
 
         <section className="dashboard-section dashboard-quick-actions" aria-labelledby="dashboard-actions-title">
           <div className="dashboard-section-heading">
-            <div><p className="dashboard-eyebrow">ACESSO RÁPIDO</p><h2 id="dashboard-actions-title">O que você precisa fazer?</h2></div>
-            <span className="dashboard-section-note">As telas de registro abrem no aplicativo operacional.</span>
+            <div><p className="dashboard-eyebrow">CONSULTA RÁPIDA</p><h2 id="dashboard-actions-title">Acesse seus registros</h2></div>
+            <span className="dashboard-section-note">Para criar, use “Novo registro” no menu inferior.</span>
           </div>
           <div className="dashboard-quick-grid">
             {quickActions.map((action) => {
               const Icon = action.icon;
               return (
-                <a className={`dashboard-quick-card accent-${action.accent}`} href={`${BOMOBILE_URL}#${action.route}`} key={action.title}>
+                <a className="dashboard-quick-card" href={`${BOMOBILE_URL}#${action.route}`} key={action.title}>
                   <span className="dashboard-quick-icon"><Icon size={19} aria-hidden="true" /></span>
                   <span className="dashboard-quick-copy"><strong>{action.title}</strong><small>{action.description}</small></span>
                   <ArrowRight size={16} className="dashboard-quick-arrow" aria-hidden="true" />
@@ -394,74 +332,28 @@ export default function Dashboard({ profile, onSignOut }: DashboardProps) {
           </div>
         </section>
 
-        {error && (
+        {error && data && (
           <div className="dashboard-load-error" role="alert">
-            <CircleAlert size={18} aria-hidden="true" /><span>{error}</span>
-            <button type="button" onClick={() => { setIsLoading(true); void refresh(); }}>Tentar novamente</button>
+            <CircleAlert size={18} aria-hidden="true" />
+            <span>{error} Os dados anteriores continuam visíveis.</span>
+            <button type="button" onClick={() => void refresh()}>Tentar novamente</button>
           </div>
         )}
 
-        {showTeamOverview ? (
-          <div className="dashboard-activity-grid dashboard-activity-grid-manager">
-            <section className="dashboard-panel dashboard-panel-wide" aria-labelledby="dashboard-occurrences-title">
-              <div className="dashboard-section-heading dashboard-panel-heading">
-                <div><p className="dashboard-eyebrow">VISÃO DA EQUIPE</p><h2 id="dashboard-occurrences-title">Boletins de ocorrência</h2><p>Até seis dos boletins mais recentes de toda a equipe.</p></div>
-                <a className="dashboard-text-link" href={`${BOMOBILE_URL}#ocorrencias`}>Ver registros <ArrowRight size={15} aria-hidden="true" /></a>
-              </div>
-              {isLoading ? <div className="dashboard-loading-line"><span /> Carregando boletins...</div> : data?.occurrences.length ? (
-                <ul className="dashboard-record-list">{data.occurrences.map((item) => <OccurrenceCard key={item.id} item={item} />)}</ul>
-              ) : <EmptyRecords>Nenhum boletim recente para exibir.</EmptyRecords>}
-            </section>
-
-            <section className="dashboard-panel" aria-labelledby="dashboard-people-approaches-title">
-              <div className="dashboard-section-heading dashboard-panel-heading">
-                <div><p className="dashboard-eyebrow">VISÃO DA EQUIPE</p><h2 id="dashboard-people-approaches-title">Abordagens de pessoas</h2><p>Até seis registros mais recentes.</p></div>
-                <a className="dashboard-text-link" href={`${BOMOBILE_URL}#consulta`} aria-label="Consultar abordagens de pessoas"><ArrowRight size={15} aria-hidden="true" /></a>
-              </div>
-              {isLoading ? <div className="dashboard-loading-line"><span /> Carregando abordagens...</div> : data?.peopleApproaches.length ? (
-                <ul className="dashboard-record-list">{data.peopleApproaches.map((item) => <ApproachCard key={`pessoa-${item.id}`} item={item} />)}</ul>
-              ) : <EmptyRecords>Nenhuma abordagem de pessoa recente.</EmptyRecords>}
-            </section>
-
-            <section className="dashboard-panel" aria-labelledby="dashboard-vehicle-approaches-title">
-              <div className="dashboard-section-heading dashboard-panel-heading">
-                <div><p className="dashboard-eyebrow">VISÃO DA EQUIPE</p><h2 id="dashboard-vehicle-approaches-title">Abordagens de veículos</h2><p>Até seis registros mais recentes.</p></div>
-                <a className="dashboard-text-link" href={`${BOMOBILE_URL}#consulta`} aria-label="Consultar abordagens de veículos"><ArrowRight size={15} aria-hidden="true" /></a>
-              </div>
-              {isLoading ? <div className="dashboard-loading-line"><span /> Carregando abordagens...</div> : data?.vehicleApproaches.length ? (
-                <ul className="dashboard-record-list">{data.vehicleApproaches.map((item) => <ApproachCard key={`veiculo-${item.id}`} item={item} />)}</ul>
-              ) : <EmptyRecords>Nenhuma abordagem de veículo recente.</EmptyRecords>}
-            </section>
-          </div>
-        ) : (
-          <div className="dashboard-activity-grid">
-            <section className="dashboard-panel dashboard-panel-wide" aria-labelledby="dashboard-occurrences-title">
-              <div className="dashboard-section-heading dashboard-panel-heading">
-                <div><p className="dashboard-eyebrow">SUA ATUAÇÃO</p><h2 id="dashboard-occurrences-title">Minhas ocorrências</h2><p>Registros criados por você ou com seu vínculo de participação.</p></div>
-                <a className="dashboard-text-link" href={`${BOMOBILE_URL}#ocorrencias`}>Ver todas <ArrowRight size={15} aria-hidden="true" /></a>
-              </div>
-              {isLoading ? <div className="dashboard-loading-line"><span /> Carregando seus registros...</div> : data?.occurrences.length ? (
-                <ul className="dashboard-record-list">{data.occurrences.map((item) => <OccurrenceCard key={item.id} item={item} />)}</ul>
-              ) : <EmptyRecords>Quando você registrar ou participar de uma ocorrência, ela aparecerá neste espaço.</EmptyRecords>}
-            </section>
-
-            <section className="dashboard-panel" aria-labelledby="dashboard-approaches-title">
-              <div className="dashboard-section-heading dashboard-panel-heading">
-                <div><p className="dashboard-eyebrow">CONSULTAS DE CAMPO</p><h2 id="dashboard-approaches-title">Abordagens recentes</h2><p>Atuações registradas por você ou com seu apoio.</p></div>
-                <a className="dashboard-text-link" href={`${BOMOBILE_URL}#consulta`} aria-label="Consultar abordagens"><ArrowRight size={15} aria-hidden="true" /></a>
-              </div>
-              {isLoading ? <div className="dashboard-loading-line"><span /> Carregando abordagens...</div> : data?.approaches.length ? (
-                <ul className="dashboard-record-list">{data.approaches.map((item) => <ApproachCard key={`${item.kind}-${item.id}`} item={item} />)}</ul>
-              ) : <EmptyRecords>Suas abordagens recentes aparecerão aqui.</EmptyRecords>}
-            </section>
-          </div>
-        )}
+        <DashboardActivity
+          profileRole={profile.perfil}
+          data={data}
+          isLoading={isLoading}
+          isRefreshing={isRefreshing}
+          error={error}
+          onRefresh={() => void refresh()}
+        />
 
         <footer className="dashboard-footer">
           <ShieldCheck size={16} aria-hidden="true" />
           <span>{showTeamOverview
-            ? "Visão da equipe · Até seis registros por categoria; notificações continuam individuais."
-            : "Área individual · Suas notificações e atividades respeitam seu perfil funcional."}</span>
+            ? "Visão da equipe · Até seis registros de qualquer período em cada categoria; notificações continuam individuais."
+            : "Área individual · Até seis ocorrências e abordagens criadas por você ou com sua participação."}</span>
           <a href={`${BOMOBILE_URL}#notificacoes`}>Central de notificações</a>
         </footer>
       </div>

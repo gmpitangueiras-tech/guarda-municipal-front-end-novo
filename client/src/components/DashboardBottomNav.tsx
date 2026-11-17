@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Bell,
+  CarFront,
   ClipboardList,
   FilePlus2,
   House,
@@ -82,7 +83,7 @@ export default function DashboardBottomNav({
           onClick={() => setSheet("create")}
           aria-haspopup="dialog"
           aria-expanded={sheet === "create"}
-          aria-label="Novo registro: escolher ocorrência ou abordagem"
+          aria-label="Novo registro: boletim, abordagem de pessoa ou abordagem de veículo"
         >
           <span className="dashboard-nav-create-icon"><Plus size={21} aria-hidden="true" /></span>
           <span>Novo registro</span>
@@ -137,18 +138,29 @@ export default function DashboardBottomNav({
             </div>
 
             {sheet === "create" && (
-              <div className="dashboard-menu-options">
-                <a className="dashboard-menu-option" href={`${BOMOBILE_URL}#nova-ocorrencia`}>
-                  <span className="dashboard-menu-option-icon is-gold"><FilePlus2 size={20} aria-hidden="true" /></span>
-                  <span><strong>Novo boletim / ocorrência</strong><small>Registrar uma ocorrência com GM de apoio</small></span>
-                  <ArrowRight size={17} aria-hidden="true" />
-                </a>
-                <a className="dashboard-menu-option" href={`${BOMOBILE_URL}#consulta`}>
-                  <span className="dashboard-menu-option-icon"><Shield size={20} aria-hidden="true" /></span>
-                  <span><strong>Nova abordagem</strong><small>Registrar abordagem de pessoa ou veículo</small></span>
-                  <ArrowRight size={17} aria-hidden="true" />
-                </a>
-              </div>
+              <>
+                <div className="dashboard-record-support-note" role="note">
+                  <span><Shield size={18} aria-hidden="true" /></span>
+                  <span><strong>GM de apoio obrigatório</strong><small>Indique outro GM ativo. O sistema bloqueia abordagens sem esse vínculo e não sincroniza boletins sem equipe.</small></span>
+                </div>
+                <div className="dashboard-menu-options">
+                  <a className="dashboard-menu-option" href={`${BOMOBILE_URL}#nova-ocorrencia`}>
+                    <span className="dashboard-menu-option-icon is-gold"><FilePlus2 size={20} aria-hidden="true" /></span>
+                    <span><strong>Boletim de ocorrência</strong><small>Inclua outro GM como apoio antes de sincronizar.</small></span>
+                    <ArrowRight size={17} aria-hidden="true" />
+                  </a>
+                  <a className="dashboard-menu-option" href={`${BOMOBILE_URL}#consulta`}>
+                    <span className="dashboard-menu-option-icon"><UserRound size={20} aria-hidden="true" /></span>
+                    <span><strong>Abordagem de pessoa</strong><small>Na tela operacional, escolha Pessoa e indique o GM de apoio.</small></span>
+                    <ArrowRight size={17} aria-hidden="true" />
+                  </a>
+                  <a className="dashboard-menu-option" href={`${BOMOBILE_URL}#consulta`}>
+                    <span className="dashboard-menu-option-icon"><CarFront size={20} aria-hidden="true" /></span>
+                    <span><strong>Abordagem de veículo</strong><small>Na tela operacional, escolha Veículo e indique o GM de apoio.</small></span>
+                    <ArrowRight size={17} aria-hidden="true" />
+                  </a>
+                </div>
+              </>
             )}
 
             {sheet === "more" && (

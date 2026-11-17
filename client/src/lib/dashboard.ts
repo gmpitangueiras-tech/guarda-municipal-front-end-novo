@@ -4,6 +4,7 @@ export type OccurrencePreview = {
   id: string;
   numero_ocorrencia: string | null;
   numero_temporario: string | null;
+  criado_em: string | null;
   status: string | null;
   tipo_ocorrencia: string | null;
   sub_tipo_ocorrencia: string | null;
@@ -19,6 +20,7 @@ export type ApproachPreview = {
   kind: "pessoa" | "veiculo";
   criado_em: string | null;
   data_hora_inicio: string | null;
+  status_abordagem: string | null;
   local_abordagem: string | null;
   tipo_abordagem: string | null;
   tipo_atendimento: string | null;
@@ -46,7 +48,7 @@ export type DashboardData = {
 };
 
 const OCCURRENCE_FIELDS =
-  "id,numero_ocorrencia,numero_temporario,status,tipo_ocorrencia,sub_tipo_ocorrencia,gravidade,data_hora_inicio,local_ocorrencia,bairro_ocorrencia,cancelado_em";
+  "id,criado_em,numero_ocorrencia,numero_temporario,status,tipo_ocorrencia,sub_tipo_ocorrencia,gravidade,data_hora_inicio,local_ocorrencia,bairro_ocorrencia,cancelado_em";
 const PAGE_SIZE = 500;
 
 export function isManagementRole(profileRole: string | null | undefined): boolean {
@@ -109,7 +111,7 @@ async function getParticipatedOccurrences(ids: string[]): Promise<OccurrencePrev
         .select(OCCURRENCE_FIELDS)
         .in("id", batch)
         .is("deleted_at", null)
-        .order("data_hora_inicio", { ascending: false })
+        .order("criado_em", { ascending: false, nullsFirst: false })
         .limit(6),
     ),
   );
@@ -121,10 +123,16 @@ async function getParticipatedOccurrences(ids: string[]): Promise<OccurrencePrev
 }
 
 function sortByRecent<T extends { data_hora_inicio?: string | null; criado_em?: string | null }>(items: T[]): T[] {
+  const timestamp = (value: string | null | undefined) => {
+    if (!value) return 0;
+    const normalized = value.includes("T") ? value : value.replace(" ", "T");
+    const parsed = Date.parse(normalized);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
   return [...items].sort((a, b) => {
-    const dateA = a.data_hora_inicio ?? a.criado_em ?? "";
-    const dateB = b.data_hora_inicio ?? b.criado_em ?? "";
-    return dateB.localeCompare(dateA);
+    const dateA = timestamp(a.criado_em) || timestamp(a.data_hora_inicio);
+    const dateB = timestamp(b.criado_em) || timestamp(b.data_hora_inicio);
+    return dateB - dateA;
   });
 }
 
@@ -138,13 +146,13 @@ export async function loadDashboardData(profileId: string, profileRole: string |
     : occurrenceBaseQuery.eq("criado_por", profileId);
   const peopleBaseQuery = supabase
     .from("abordagens_pessoas")
-    .select("id,criado_em,data_hora_inicio,local_abordagem,tipo_abordagem,tipo_atendimento,fase");
+    .select("id,criado_em,data_hora_inicio,status_abordagem,local_abordagem,tipo_abordagem,tipo_atendimento,fase");
   const peopleQuery = isTeamOverview
     ? peopleBaseQuery
     : peopleBaseQuery.or(`criado_por.eq.${profileId},guarda_apoio_id.eq.${profileId}`);
   const vehiclesBaseQuery = supabase
     .from("abordagens_veiculos")
-    .select("id,criado_em,data_hora_inicio,local_abordagem,tipo_abordagem,tipo_atendimento,fase");
+    .select("id,criado_em,data_hora_inicio,status_abordagem,local_abordagem,tipo_abordagem,tipo_atendimento,fase");
   const vehiclesQuery = isTeamOverview
     ? vehiclesBaseQuery
     : vehiclesBaseQuery.or(`criado_por.eq.${profileId},guarda_apoio_id.eq.${profileId}`);
@@ -155,14 +163,14 @@ export async function loadDashboardData(profileId: string, profileRole: string |
       getPendingSyncRows(),
       occurrenceQuery
         .is("deleted_at", null)
-        .order("data_hora_inicio", { ascending: false })
+        .order("criado_em", { ascending: false, nullsFirst: false })
         .limit(6),
       peopleQuery
-        .order("criado_em", { ascending: false })
-        .limit(isTeamOverview ? 6 : 4),
+        .order("criado_em", { ascending: false, nullsFirst: false })
+        .limit(6),
       vehiclesQuery
-        .order("criado_em", { ascending: false })
-        .limit(isTeamOverview ? 6 : 4),
+        .order("criado_em", { ascending: false, nullsFirst: false })
+        .limit(6),
       supabase
         .from("notificacoes")
         .select("id,titulo,mensagem,tipo,lida,link,criado_em")
@@ -188,7 +196,7 @@ export async function loadDashboardData(profileId: string, profileRole: string |
   ]) {
     occurrencesById.set(occurrence.id, occurrence);
   }
-  const occurrences = sortByRecent([...occurrencesById.values()]).slice(0, isTeamOverview ? 6 : 5);
+  const occurrences = sortByRecent([...occurrencesById.values()]).slice(0, 6);
   const participatedSet = new Set(participatedIds);
   const pendingSyncCount = isTeamOverview
     ? pendingRows.length
@@ -206,9 +214,9 @@ export async function loadDashboardData(profileId: string, profileRole: string |
   return {
     occurrences,
     pendingSyncCount,
-    peopleApproaches: sortByRecent(people).slice(0, isTeamOverview ? 6 : 4),
-    vehicleApproaches: sortByRecent(vehicles).slice(0, isTeamOverview ? 6 : 4),
-    approaches: sortByRecent([...people, ...vehicles]).slice(0, 4),
+    peopleApproaches: sortByRecent(people).slice(0, 6),
+    vehicleApproaches: sortByRecent(vehicles).slice(0, 6),
+    approaches: sortByRecent([...people, ...vehicles]).slice(0, 6),
     notifications: (notificationResult.data ?? []) as DashboardNotification[],
     unreadCount: unreadResult.count ?? 0,
   };
