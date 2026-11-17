@@ -20,6 +20,7 @@ import {
 import type { PerfilFuncional } from "@/lib/auth";
 import DashboardBottomNav from "@/components/DashboardBottomNav";
 import {
+  isManagementRole,
   loadDashboardData,
   setAllNotificationReadState,
   setNotificationReadState,
@@ -72,10 +73,6 @@ function notificationDestination(item: DashboardNotification) {
 function shortName(profile: PerfilFuncional) {
   const value = profile.apelido?.trim() || profile.nome_completo?.trim() || "Guarda Municipal";
   return value.split(/\s+/)[0];
-}
-
-function isManagementProfile(profile: PerfilFuncional) {
-  return ["admin", "supervisor"].includes((profile.perfil ?? "").trim().toLowerCase());
 }
 
 function NotificationPanel({
@@ -218,7 +215,7 @@ export default function Dashboard({ profile, onSignOut }: DashboardProps) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const notificationRef = useRef<HTMLDivElement>(null);
-  const showTeamOverview = isManagementProfile(profile);
+  const showTeamOverview = isManagementRole(profile.perfil);
 
   const refresh = useCallback(async () => {
     setError(null);

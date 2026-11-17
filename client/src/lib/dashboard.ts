@@ -49,6 +49,11 @@ const OCCURRENCE_FIELDS =
   "id,numero_ocorrencia,numero_temporario,status,tipo_ocorrencia,sub_tipo_ocorrencia,gravidade,data_hora_inicio,local_ocorrencia,bairro_ocorrencia,cancelado_em";
 const PAGE_SIZE = 500;
 
+export function isManagementRole(profileRole: string | null | undefined): boolean {
+  const normalized = (profileRole ?? "").trim().toLowerCase();
+  return ["admin", "administrador", "supervisor"].includes(normalized);
+}
+
 async function getParticipatedOccurrenceIds(profileId: string): Promise<string[]> {
   if (!supabase) throw new Error("Serviço de dados indisponível.");
 
@@ -126,7 +131,7 @@ function sortByRecent<T extends { data_hora_inicio?: string | null; criado_em?: 
 export async function loadDashboardData(profileId: string, profileRole: string | null): Promise<DashboardData> {
   if (!supabase) throw new Error("Serviço de dados indisponível.");
 
-  const isTeamOverview = ["admin", "supervisor"].includes((profileRole ?? "").trim().toLowerCase());
+  const isTeamOverview = isManagementRole(profileRole);
   const occurrenceBaseQuery = supabase.from("ocorrencias").select(OCCURRENCE_FIELDS);
   const occurrenceQuery = isTeamOverview
     ? occurrenceBaseQuery

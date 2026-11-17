@@ -23,9 +23,10 @@ function show(value: string | null | undefined) {
 }
 
 function roleLabel(value: string | null) {
-  if (value === "supervisor") return "Supervisor";
-  if (value === "admin") return "Administrador";
-  if (value === "guarda") return "Guarda Municipal";
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "supervisor") return "Supervisor";
+  if (normalized === "admin" || normalized === "administrador") return "Administrador";
+  if (normalized === "guarda") return "Guarda Municipal";
   return show(value);
 }
 
