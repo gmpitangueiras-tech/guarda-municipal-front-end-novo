@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -7,8 +7,8 @@ import {
   ChevronDown,
   CircleAlert,
   ClipboardList,
+  Clock,
   FilePlus2,
-  Filter,
   MapPin,
   RefreshCw,
   Search,
@@ -22,158 +22,640 @@ import {
 } from "lucide-react";
 import PrivateRecordThumbnail from "@/components/PrivateRecordThumbnail";
 import type { PerfilFuncional } from "@/lib/auth";
-import { isManagementRole } from "@/lib/dashboard";
+import { isManagementRole, privateImageReference } from "@/lib/dashboard";
 import {
-  EMPTY_OCCURRENCE_FILTERS,
-  EMPTY_OCCURRENCE_SUMMARY,
+  buscarOcorrenciaPorNumero,
+  carregarPainelOcorrencias,
+  chaveDeAgrupamento,
+  chipsAtivos,
+  concluirBO,
+  contarFiltrosAtivos,
+  escreverUrl,
+  FILTRO_VAZIO,
+  formatarDia,
+  formatarDuracao,
+  formatarHorarioGerado,
+  formatarRelativo,
+  GRAVIDADES,
+  gravarOrdenacao,
+  lerEliminarAviso,
+  lerFiltroDaUrl,
   loadOfficerOptions,
-  loadOccurrencePage,
-  type OccurrenceFilters,
-  type OccurrenceListItem,
-  type OccurrenceSummary,
-  type QuickOccurrenceFilter,
-} from "@/lib/occurrences";
+  paraCampoDataHora,
+  paraHorarioServidor,
+  ROTULO_ORDENACAO,
+  ROTULO_QUALIDADE,
+  type AbaOcorrencia,
+  type DocumentoOcorrencia,
+  type FiltroOcorrencias,
+  type GravidadeSlug,
+  type JanelaTemporal,
+  type OcorrenciaItem,
+  type OrdenacaoOcorrencia,
+  type SituacaoOcorrencia,
+  type TotaisOcorrencias,
+} from "@/lib/ocorrencias";
 import brasaoGuarda from "@/assets/brasao-guarda-pitangueiras.png";
 
-const LEGACY_OPERATIONAL_URL = `${window.location.origin}/bomobile/`;
+const PAGINA_INICIAL = 0;
+const ESQUELETO = [0, 1, 2, 3];
+const ORDENACOES: OrdenacaoOcorrencia[] = ["recentes", "antigas", "sem_fechar", "tipo"];
 
-const QUICK_FILTERS: Array<{ id: QuickOccurrenceFilter; label: string }> = [
-  { id: "all", label: "Todas" },
-  { id: "mine", label: "Minhas" },
-  { id: "pending", label: "Pendentes" },
-  { id: "finalized", label: "Finalizadas" },
-];
+const SITUACAO_TOM: Record<SituacaoOcorrencia, string> = {
+  em_atendimento: "ativo",
+  encerrada: "concluido",
+  encerrada_sem_horario: "sem-horario",
+  cancelada: "cancelado",
+  inconsistente: "inconsistente",
+};
 
-const STATUS_OPTIONS = [
-  { value: "draft", label: "Rascunho" },
-  { value: "pending_sync", label: "Pendente de sincronização" },
-  { value: "synced", label: "Sincronizada" },
-  { value: "pending_rectification", label: "Retificação pendente" },
-  { value: "rectified", label: "Retificada" },
-  { value: "rectification_rejected", label: "Retificação rejeitada" },
-  { value: "cancelled", label: "Cancelada" },
-];
+const DOCUMENTO_TOM: Record<DocumentoOcorrencia, string> = {
+  em_redacao: "redacao",
+  incompleto: "incompleto",
+  concluido: "doc-concluido",
+  retificando: "retificando",
+  retificado: "retificado",
+};
 
-function dateLabel(value: string | null) {
-  if (!value) return "Data não informada";
-  const normalized = value.includes("T") ? value : value.replace(" ", "T");
-  const date = new Date(normalized);
-  if (Number.isNaN(date.getTime())) return "Data não informada";
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
+const tomSituacao = (valor: SituacaoOcorrencia): string => SITUACAO_TOM[valor] ?? "neutro";
+const tomDocumento = (valor: DocumentoOcorrencia): string => DOCUMENTO_TOM[valor] ?? "neutro";
+
+function linhaLocal(item: OcorrenciaItem): string {
+  const partes = [item.local ?? item.rodovia, item.bairro].filter((valor): valor is string => Boolean(valor));
+  if (!partes.length) return item.referencia ?? "";
+  return item.referencia ? `${partes.join(" · ")} · ${item.referencia}` : partes.join(" · ");
 }
 
-function typeLabel(value: string | null) {
-  const source = value?.trim().replaceAll("_", " ").replace(/\s+/g, " ");
-  if (!source) return "Ocorrência registrada";
-  const lower = source.toLocaleLowerCase("pt-BR");
-  const particles = new Set(["a", "as", "ao", "aos", "com", "da", "das", "de", "do", "dos", "e", "em", "na", "nas", "no", "nos", "para", "por"]);
-  return lower.split(" ").map((word, index) => {
-    if (index > 0 && particles.has(word)) return word;
-    return word.replace(/^\p{L}/u, (letter) => letter.toLocaleUpperCase("pt-BR"));
-  }).join(" ");
+function linhaEquipe(item: OcorrenciaItem) {
+  const responsavel = item.responsavel
+    ? `GM ${item.responsavel}`
+    : item.responsavel_sem_apelido
+      ? "GM sem apelido"
+      : "";
+  const apoio = item.apoio.length ? `Apoio: ${item.apoio.map((nome) => `GM ${nome}`).join(", ")}` : "";
+  const nota = !item.equipe_registrada
+    ? item.origem_criacao === "legado"
+      ? "apoio não registrado (anterior à regra)"
+      : "apoio não registrado"
+    : "";
+  return { responsavel, apoio, nota };
 }
 
-function locationLabel(item: OccurrenceListItem) {
-  const pieces = [item.local_ocorrencia?.trim(), item.bairro_ocorrencia?.trim()].filter(Boolean);
-  return pieces.length ? pieces.join(" · ") : "Local não informado";
-}
-
-function numberLabel(item: OccurrenceListItem) {
-  const official = item.numero_ocorrencia?.trim() || item.numero_bo?.trim();
-  if (official) return `BO ${official}`;
-  const temporary = item.numero_temporario?.trim();
-  return temporary ? `Temporário ${temporary}` : "Número em processamento";
-}
-
-function statusLabel(item: OccurrenceListItem) {
-  const status = (item.status ?? "").trim().toLowerCase();
-  if (item.data_hora_finalizacao && status === "synced") return "Finalizada";
-  const labels: Record<string, string> = {
-    draft: "Rascunho",
-    pending_sync: "Pendente de sincronização",
-    synced: "Sincronizada",
-    cancelled: "Cancelada",
-    rectified: "Retificada",
-    pending_rectification: "Retificação pendente",
-    rectification_rejected: "Retificação rejeitada",
-  };
-  return labels[status] ?? "Em acompanhamento";
-}
-
-function statusTone(item: OccurrenceListItem) {
-  const status = (item.status ?? "").trim().toLowerCase();
-  if (status === "draft") return "is-draft";
-  if (status === "pending_sync" || status === "pending_rectification") return "is-pending";
-  if (status === "cancelled" || status === "rectification_rejected") return "is-danger";
-  if (status === "rectified" || item.data_hora_finalizacao) return "is-complete";
-  return "is-active";
-}
-
-function StatCard({ label, value, tone }: { label: string; value: number; tone: string }) {
+function Selos({ item, compacto = false }: { item: OcorrenciaItem; compacto?: boolean }) {
   return (
-    <div className={`occurrence-stat ${tone}`}>
-      <span>{label}</span>
-      <strong>{value.toLocaleString("pt-BR")}</strong>
-    </div>
+    <span className={`occurrence-selos${compacto ? " is-compacto" : ""}`}>
+      <span className={`occurrence-selo is-${tomSituacao(item.situacao)}`}>{item.situacao_rotulo}</span>
+      <span className={`occurrence-selo is-${tomDocumento(item.documento)}`}>{item.documento_rotulo}</span>
+      {item.numero_bo ? <span className="occurrence-selo is-externo">BO externo</span> : null}
+    </span>
   );
 }
 
-function OccurrenceCard({ item, onOpen }: { item: OccurrenceListItem; onOpen: (item: OccurrenceListItem) => void }) {
-  const type = typeLabel(item.tipo_ocorrencia || item.sub_tipo_ocorrencia);
-  const location = locationLabel(item);
-  const date = item.data_hora_inicio || item.criado_em;
+function MiniaturaOcorrencia({ item }: { item: OcorrenciaItem }) {
+  const referencia = privateImageReference(item.foto_thumb) ?? privateImageReference(item.foto_url);
+  return (
+    <span className="occurrence-card-art">
+      <PrivateRecordThumbnail photo={referencia} fallback={<ClipboardList size={22} aria-hidden="true" />} />
+      {item.fotos_total > 1 ? (
+        <span className="occurrence-photo-count" aria-hidden="true">
+          +{item.fotos_total - 1}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+function CartaoOcorrencia({ item, onAbrir }: { item: OcorrenciaItem; onAbrir: (item: OcorrenciaItem) => void }) {
+  const local = linhaLocal(item);
+  const equipe = linhaEquipe(item);
+  const data = item.data_hora_inicio || item.criado_em;
+  const duracao = formatarDuracao(item.duracao_min);
   return (
     <li className="occurrence-list-item">
       <button
         className="occurrence-card"
         type="button"
-        onClick={() => onOpen(item)}
-        aria-label={`Ver detalhes: ${type}, ${numberLabel(item)}`}
+        onClick={() => onAbrir(item)}
+        aria-label={`Abrir ${item.tipo_rotulo}, ${item.identidade}`}
       >
-        <span className="occurrence-card-art">
-          <PrivateRecordThumbnail
-            photo={item.photo}
-            fallback={<ClipboardList size={22} aria-hidden="true" />}
-          />
-        </span>
+        <MiniaturaOcorrencia item={item} />
         <span className="occurrence-card-copy">
           <span className="occurrence-card-heading">
-            <strong>{type}</strong>
-            <span className={`occurrence-status ${statusTone(item)}`}>{statusLabel(item)}</span>
+            <strong>{item.identidade}</strong>
+            <span className="occurrence-card-type">{item.tipo_rotulo}</span>
           </span>
-          <span className="occurrence-card-number">{numberLabel(item)}</span>
-          <span className="occurrence-card-location" title={location}><MapPin size={13} aria-hidden="true" />{location}</span>
+          <Selos item={item} />
           <span className="occurrence-card-meta">
-            <time dateTime={date ?? undefined}><CalendarDays size={12} aria-hidden="true" />{dateLabel(date)}</time>
-            <span className="occurrence-severity">{item.gravidade?.trim() ? `Gravidade ${typeLabel(item.gravidade)}` : "Gravidade não informada"}</span>
+            {data ? (
+              <time dateTime={data}>
+                <CalendarDays size={14} aria-hidden="true" />
+                {formatarRelativo(data)}
+              </time>
+            ) : null}
+            {item.origem ? <span className="occurrence-card-origin">{item.origem}</span> : null}
+            {item.gravidade !== "nao_informado" ? (
+              <span className="occurrence-severity">Gravidade {item.gravidade_rotulo}</span>
+            ) : null}
+            {duracao ? (
+              <span className="occurrence-duration">
+                <Clock size={13} aria-hidden="true" />
+                {duracao}
+              </span>
+            ) : null}
           </span>
-          <span className="occurrence-card-team">
-            <span><UserRound size={12} aria-hidden="true" />{item.creatorName ?? "GM sem apelido cadastrado"}</span>
-            <span><UsersRound size={12} aria-hidden="true" />{item.supportName ?? (item.supportAssigned ? "GM de apoio sem apelido" : "Apoio não informado")}</span>
-          </span>
-          {item.status === "pending_sync" && (
-            <span className="occurrence-sync-note">
-              <RefreshCw size={12} aria-hidden="true" />
-              Pendente de sincronização
-              {item.sync_attempts > 0 && <small>{item.sync_attempts} tentativa{item.sync_attempts === 1 ? "" : "s"}</small>}
+          {local ? (
+            <span className="occurrence-card-location" title={local}>
+              <MapPin size={14} aria-hidden="true" />
+              {local}
             </span>
-          )}
-          {item.hasRectification && <span className="occurrence-rectification"><ShieldCheck size={12} aria-hidden="true" />Registro com retificação</span>}
+          ) : null}
+          {equipe.responsavel || equipe.apoio || equipe.nota ? (
+            <span className="occurrence-card-team">
+              {equipe.responsavel ? (
+                <span>
+                  <UserRound size={13} aria-hidden="true" />
+                  {equipe.responsavel}
+                </span>
+              ) : null}
+              {equipe.apoio ? (
+                <span>
+                  <UsersRound size={13} aria-hidden="true" />
+                  {equipe.apoio}
+                </span>
+              ) : null}
+              {equipe.nota ? <span className="occurrence-team-note">{equipe.nota}</span> : null}
+            </span>
+          ) : null}
+          <span className={`occurrence-sync${item.sincronia_alarme ? " is-alarme" : ""}`}>
+            <RefreshCw size={13} aria-hidden="true" />
+            {item.sincronia_rotulo}
+            {item.tem_retificacao ? <em> · registro com retificação</em> : null}
+          </span>
         </span>
-        <span className="occurrence-card-open">Ver detalhes <ArrowRight size={15} aria-hidden="true" /></span>
+        <span className="occurrence-card-open">
+          Ver detalhes <ArrowRight size={16} aria-hidden="true" />
+        </span>
       </button>
     </li>
   );
 }
 
-function OccurrenceDetail({ item, onClose }: { item: OccurrenceListItem; onClose: () => void }) {
+function SkeletonCard() {
+  return (
+    <li className="occurrence-list-item" aria-hidden="true">
+      <div className="occurrence-card is-skeleton">
+        <span className="occurrence-card-art" />
+        <span className="occurrence-card-copy">
+          <span className="occurrence-skeleton-line is-title" />
+          <span className="occurrence-skeleton-line is-badges" />
+          <span className="occurrence-skeleton-line" />
+          <span className="occurrence-skeleton-line is-short" />
+        </span>
+      </div>
+    </li>
+  );
+}
+
+type CartaoIndicador = {
+  rotulo: string;
+  valor: string;
+  nota?: string;
+  tom: string;
+};
+
+function KpiCard({
+  cartao,
+  ativo,
+  onClick,
+}: {
+  cartao: CartaoIndicador & { aba: AbaOcorrencia };
+  ativo: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`occurrence-stat is-${cartao.tom}${ativo ? " is-active" : ""}`}
+      onClick={onClick}
+      aria-pressed={ativo}
+    >
+      <span className="occurrence-stat-value">{cartao.valor}</span>
+      <span className="occurrence-stat-label">{cartao.rotulo}</span>
+      {cartao.nota ? <span className="occurrence-stat-note">{cartao.nota}</span> : null}
+      <span className="occurrence-stat-go">
+        Abrir <ArrowRight size={14} aria-hidden="true" />
+      </span>
+    </button>
+  );
+}
+
+function KpiEstatico({ cartao }: { cartao: CartaoIndicador }) {
+  return (
+    <div className={`occurrence-stat is-${cartao.tom} is-static`}>
+      <span className="occurrence-stat-value">{cartao.valor}</span>
+      <span className="occurrence-stat-label">{cartao.rotulo}</span>
+      {cartao.nota ? <span className="occurrence-stat-note">{cartao.nota}</span> : null}
+    </div>
+  );
+}
+
+type PropsPainel = {
+  filtro: FiltroOcorrencias;
+  totais: TotaisOcorrencias | null;
+  onMudar: (mudar: (atual: FiltroOcorrencias) => FiltroOcorrencias) => void;
+  onFechar: () => void;
+};
+
+function PainelFiltros({ filtro, totais, onMudar, onFechar }: PropsPainel) {
+  const [busca, setBusca] = useState(filtro.busca);
+  const [local, setLocal] = useState(filtro.local);
+  const temporizador = useRef<number | null>(null);
+
+  useEffect(() => {
+    setBusca(filtro.busca);
+  }, [filtro.busca]);
+  useEffect(() => {
+    setLocal(filtro.local);
+  }, [filtro.local]);
+  useEffect(
+    () => () => {
+      if (temporizador.current) window.clearTimeout(temporizador.current);
+    },
+    [],
+  );
+
+  function adiar(mudar: (atual: FiltroOcorrencias, valor: string) => FiltroOcorrencias, valor: string) {
+    if (temporizador.current) window.clearTimeout(temporizador.current);
+    temporizador.current = window.setTimeout(() => onMudar((atual) => mudar(atual, valor)), 400);
+  }
+
+  const facetas = totais?.facetas;
+  const qualidade = facetas?.qualidade ?? {};
+  const bairros = facetas?.bairros ?? [];
+  const tipos = facetas?.tipos ?? [];
+  const gravidades = facetas?.gravidades ?? [];
+  const origens = facetas?.origens ?? [];
+  const gms = facetas?.gms ?? [];
+
+  return (
+    <div id="occurrences-advanced-panel" className="occurrences-advanced-panel">
+      <div className="occurrences-filter-grid">
+        <label className="occurrences-search-field">
+          <span>Buscar</span>
+          <span className="occurrences-input-wrap">
+            <Search size={16} aria-hidden="true" />
+            <input
+              type="search"
+              value={busca}
+              onChange={(event) => {
+                const valor = event.target.value;
+                setBusca(valor);
+                adiar((atual, novo) => ({ ...atual, busca: novo.slice(0, 80) }), valor);
+              }}
+              placeholder="Número, tipo, local ou GM"
+            />
+          </span>
+        </label>
+
+        <label>
+          <span>Tipo</span>
+          <select
+            value={filtro.tipo[0] ?? ""}
+            onChange={(event) =>
+              onMudar((atual) => ({ ...atual, tipo: event.target.value ? [event.target.value] : [] }))
+            }
+          >
+            <option value="">Todos os tipos</option>
+            {tipos.map((facet) => (
+              <option key={facet.valor} value={facet.valor}>
+                {facet.rotulo} ({facet.quantidade})
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          <span>Gravidade</span>
+          <select
+            value={filtro.gravidade[0] ?? ""}
+            onChange={(event) =>
+              onMudar((atual) => ({ ...atual, gravidade: event.target.value ? [event.target.value] : [] }))
+            }
+          >
+            <option value="">Todas as gravidades</option>
+            {gravidades.map((facet) => (
+              <option key={facet.valor} value={facet.valor}>
+                {facet.rotulo} ({facet.quantidade})
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          <span>Como foi acionada</span>
+          <select
+            value={filtro.origem[0] ?? ""}
+            onChange={(event) =>
+              onMudar((atual) => ({ ...atual, origem: event.target.value ? [event.target.value] : [] }))
+            }
+          >
+            <option value="">Todos os acionamentos</option>
+            {origens.map((facet) => (
+              <option key={facet.valor} value={facet.valor}>
+                {facet.valor} ({facet.quantidade})
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          <span>Período medido por</span>
+          <select
+            value={filtro.janela}
+            onChange={(event) => onMudar((atual) => ({ ...atual, janela: event.target.value as JanelaTemporal }))}
+          >
+            <option value="inicio">Início do atendimento</option>
+            <option value="encerramento">Encerramento</option>
+          </select>
+        </label>
+
+        <label>
+          <span>De</span>
+          <input type="date" value={filtro.de} onChange={(event) => onMudar((atual) => ({ ...atual, de: event.target.value }))} />
+        </label>
+
+        <label>
+          <span>Até</span>
+          <input type="date" value={filtro.ate} onChange={(event) => onMudar((atual) => ({ ...atual, ate: event.target.value }))} />
+        </label>
+
+        <label className="occurrences-local-field">
+          <span>Local, bairro ou referência</span>
+          <input
+            value={local}
+            onChange={(event) => {
+              const valor = event.target.value;
+              setLocal(valor);
+              adiar((atual, novo) => ({ ...atual, local: novo.slice(0, 80) }), valor);
+            }}
+            placeholder="Rua, avenida ou ponto de referência"
+          />
+        </label>
+
+        <label>
+          <span>GM responsável</span>
+          <select value={filtro.gmId} onChange={(event) => onMudar((atual) => ({ ...atual, gmId: event.target.value }))}>
+            <option value="">Todos os GMs</option>
+            {gms.map((facet) => (
+              <option key={facet.id} value={facet.id}>
+                {facet.rotulo} ({facet.quantidade})
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {bairros.length ? (
+        <div className="occurrences-facet-row" role="group" aria-label="Bairros mais registrados">
+          <span className="occurrences-facet-title">Bairros</span>
+          {bairros.slice(0, 8).map((bairro) => (
+            <button
+              key={bairro.valor}
+              type="button"
+              className={`occurrences-quick-chip${filtro.local === bairro.valor ? " is-active" : ""}`}
+              aria-pressed={filtro.local === bairro.valor}
+              onClick={() => {
+                if (temporizador.current) window.clearTimeout(temporizador.current);
+                setLocal(bairro.valor);
+                onMudar((atual) => ({ ...atual, local: bairro.valor }));
+              }}
+            >
+              {bairro.valor} <small>{bairro.quantidade}</small>
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="occurrences-facet-row" role="group" aria-label="Qualidade do registro">
+        <span className="occurrences-facet-title">Qualidade</span>
+        {Object.keys(ROTULO_QUALIDADE)
+          .filter((chaveQualidade) => chaveQualidade in qualidade)
+          .map((chaveQualidade) => (
+            <button
+              key={chaveQualidade}
+              type="button"
+              className={`occurrences-quick-chip${filtro.qualidade.includes(chaveQualidade) ? " is-active" : ""}`}
+              aria-pressed={filtro.qualidade.includes(chaveQualidade)}
+              onClick={() =>
+                onMudar((atual) => ({
+                  ...atual,
+                  qualidade: atual.qualidade.includes(chaveQualidade)
+                    ? atual.qualidade.filter((valor) => valor !== chaveQualidade)
+                    : [...atual.qualidade, chaveQualidade],
+                }))
+              }
+            >
+              {ROTULO_QUALIDADE[chaveQualidade]} <small>{qualidade[chaveQualidade] ?? 0}</small>
+            </button>
+          ))}
+      </div>
+
+      <div className="occurrences-facet-row" role="group" aria-label="Vínculo com BO externo">
+        <span className="occurrences-facet-title">BO externo</span>
+        <button
+          type="button"
+          className={`occurrences-quick-chip${filtro.somenteComBo ? " is-active" : ""}`}
+          aria-pressed={filtro.somenteComBo}
+          onClick={() => onMudar((atual) => ({ ...atual, somenteComBo: !atual.somenteComBo, somenteSemBo: false }))}
+        >
+          Só com BO externo <small>{qualidade.com_bo ?? 0}</small>
+        </button>
+        <button
+          type="button"
+          className={`occurrences-quick-chip${filtro.somenteSemBo ? " is-active" : ""}`}
+          aria-pressed={filtro.somenteSemBo}
+          onClick={() => onMudar((atual) => ({ ...atual, somenteSemBo: !atual.somenteSemBo, somenteComBo: false }))}
+        >
+          Só sem BO externo
+        </button>
+      </div>
+
+      <div className="occurrences-panel-footer">
+        <p className="occurrences-panel-hint">Cada escolha aplica na hora, sem botão separado.</p>
+        <button type="button" className="occurrences-clear-button" onClick={onFechar}>
+          <X size={15} aria-hidden="true" /> Fechar filtros
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function FormularioConcluirBo({
+  item,
+  oficiais,
+  onConcluido,
+}: {
+  item: OcorrenciaItem;
+  oficiais: Array<{ id: string; label: string }>;
+  onConcluido: (mensagem: string) => void;
+}) {
+  const [encerramento, setEncerramento] = useState(paraCampoDataHora(new Date()));
+  const [gravidade, setGravidade] = useState<GravidadeSlug | "">("");
+  const [apoioId, setApoioId] = useState("");
+  const [observacoes, setObservacoes] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+
+  const pedeGravidade = item.gravidade === "nao_informado";
+  const pedeApoio = !item.equipe_registrada;
+
+  async function enviar() {
+    const horario = paraHorarioServidor(encerramento);
+    if (!horario) {
+      setErro("Informe o horário em que o atendimento terminou.");
+      return;
+    }
+    if (pedeGravidade && !gravidade) {
+      setErro("Este BO está sem gravidade. Escolha Baixa, Média, Alta ou Crítica para concluir.");
+      return;
+    }
+    if (pedeApoio && !apoioId) {
+      setErro("Escolha o GM que deu apoio. Nenhum atendimento é registrado sozinho.");
+      return;
+    }
+    if (pedeApoio && apoioId) {
+      const apoioRepetido = oficiais.find((oficial) => oficial.id === apoioId && item.responsavel && oficial.label === `GM ${item.responsavel}`);
+      if (apoioRepetido) {
+        setErro("O GM de apoio deve ser diferente do GM responsável pela ocorrência.");
+        return;
+      }
+    }
+    setErro(null);
+    setEnviando(true);
+    try {
+      const resposta = await concluirBO({
+        ocorrenciaId: item.id,
+        encerramento: horario,
+        gravidade: pedeGravidade ? (gravidade as GravidadeSlug) : null,
+        observacoes: observacoes.trim() || null,
+        apoioId: pedeApoio ? apoioId : null,
+      });
+      onConcluido(
+        resposta.numero_ocorrencia
+          ? `BO da Ocorrência ${resposta.numero_ocorrencia} concluído.`
+          : "BO concluído.",
+      );
+    } catch (cause) {
+      setErro(cause instanceof Error ? cause.message : "Não foi possível concluir o BO.");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <section className="occurrence-complete-form" aria-label="Concluir BO">
+      <h3>Concluir BO</h3>
+      <p className="occurrence-complete-help">
+        Este BO da Guarda está incompleto. O horário de término do atendimento é obrigatório para fechar.
+      </p>
+      <label>
+        <span>Horário de término do atendimento</span>
+        <input type="datetime-local" value={encerramento} onChange={(event) => setEncerramento(event.target.value)} />
+      </label>
+
+      {pedeGravidade ? (
+        <div className="occurrence-severity-choice" role="group" aria-label="Gravidade">
+          <span className="occurrence-choice-label">Gravidade</span>
+          <div className="occurrence-severity-buttons">
+            {GRAVIDADES.map((opcao) => (
+              <button
+                key={opcao.valor}
+                type="button"
+                className={`occurrence-severity-button${gravidade === opcao.valor ? " is-active" : ""}`}
+                aria-pressed={gravidade === opcao.valor}
+                onClick={() => setGravidade(opcao.valor)}
+              >
+                {opcao.rotulo}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {pedeApoio ? (
+        <div className="occurrences-field-wide">
+          <label>
+            <span>GM de apoio</span>
+            <select value={apoioId} onChange={(event) => setApoioId(event.target.value)}>
+              <option value="">Escolha o guarda que deu apoio</option>
+              {oficiais.map((oficial) => (
+                <option key={oficial.id} value={oficial.id}>
+                  {oficial.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="occurrences-field-note">Esse guarda ainda não está no sistema? Peça o cadastro ao administrador.</p>
+        </div>
+      ) : null}
+
+      <label>
+        <span>Complemento do relato (opcional)</span>
+        <textarea rows={3} value={observacoes} onChange={(event) => setObservacoes(event.target.value)} />
+      </label>
+
+      {erro ? (
+        <p className="occurrence-form-error" role="alert">
+          <CircleAlert size={16} aria-hidden="true" /> <span>{erro}</span>
+        </p>
+      ) : null}
+
+      <button type="button" className="occurrences-apply-button" onClick={enviar} disabled={enviando}>
+        {enviando ? <RefreshCw size={15} className="spin" aria-hidden="true" /> : <Check size={15} aria-hidden="true" />}
+        <span>{enviando ? "Concluindo no servidor…" : "Concluir BO no servidor"}</span>
+      </button>
+    </section>
+  );
+}
+
+function Bloco({ titulo, children }: { titulo: string; children: ReactNode }) {
+  return (
+    <section className="occurrence-detail-block">
+      <h3>{titulo}</h3>
+      {children}
+    </section>
+  );
+}
+
+function Linha({ titulo, valor, tom }: { titulo: string; valor: string; tom?: string }) {
+  if (!valor) return null;
+  return (
+    <div className={`occurrence-detail-line${tom ? ` is-${tom}` : ""}`}>
+      <span>{titulo}</span>
+      <strong>{valor}</strong>
+    </div>
+  );
+}
+
+function DetalheOcorrencia({
+  item,
+  oficiais,
+  onClose,
+  onConcluido,
+}: {
+  item: OcorrenciaItem;
+  oficiais: Array<{ id: string; label: string }>;
+  onClose: () => void;
+  onConcluido: (mensagem: string) => void;
+}) {
   const dialogRef = useRef<HTMLElement | null>(null);
   const closeButton = useRef<HTMLButtonElement | null>(null);
+  const [relatoAberto, setRelatoAberto] = useState(false);
+  const local = linhaLocal(item);
+  const equipe = linhaEquipe(item);
+  const duracao = formatarDuracao(item.duracao_min);
+  const temDadosLocal = Boolean(local || item.tem_coordenada || item.rodovia);
+
   useEffect(() => {
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const previousOverflow = document.body.style.overflow;
@@ -188,7 +670,11 @@ function OccurrenceDetail({ item, onClose }: { item: OccurrenceListItem; onClose
       if (event.key !== "Tab") return;
       const dialog = dialogRef.current;
       const focusable = dialog
-        ? Array.from(dialog.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'))
+        ? Array.from(
+            dialog.querySelectorAll<HTMLElement>(
+              'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+            ),
+          )
         : [];
       if (focusable.length === 0) {
         event.preventDefault();
@@ -215,30 +701,166 @@ function OccurrenceDetail({ item, onClose }: { item: OccurrenceListItem; onClose
     };
   }, [onClose]);
 
-  const fields = [
-    { label: "Número", value: numberLabel(item) },
-    { label: "Status", value: statusLabel(item) },
-    { label: "Data e hora", value: dateLabel(item.data_hora_inicio || item.criado_em) },
-    { label: "Local", value: locationLabel(item) },
-    { label: "Gravidade", value: item.gravidade?.trim() ? typeLabel(item.gravidade) : "Não informada" },
-    { label: "GM responsável", value: item.creatorName ?? "GM sem apelido cadastrado" },
-    { label: "GM de apoio", value: item.supportName ?? (item.supportAssigned ? "GM de apoio sem apelido" : "Apoio não informado") },
-  ];
-
   return (
-    <div className="occurrence-detail-backdrop" onPointerDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section ref={dialogRef} className="occurrence-detail-sheet" role="dialog" aria-modal="true" aria-labelledby="occurrence-detail-title" tabIndex={-1}>
+    <div
+      className="occurrence-detail-backdrop"
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        ref={dialogRef}
+        className="occurrence-detail-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="occurrence-detail-title"
+        tabIndex={-1}
+      >
         <div className="occurrence-detail-topline">
-          <span className="occurrence-detail-mark"><ClipboardList size={19} aria-hidden="true" /></span>
-          <button ref={closeButton} type="button" className="occurrence-detail-close" onClick={onClose} aria-label="Fechar detalhes"><X size={18} aria-hidden="true" /></button>
+          <span className="occurrence-detail-mark">
+            <ClipboardList size={20} aria-hidden="true" />
+          </span>
+          <button
+            ref={closeButton}
+            type="button"
+            className="occurrence-detail-close"
+            onClick={onClose}
+            aria-label="Fechar detalhes"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
         </div>
-        <p className="dashboard-eyebrow">RESUMO OPERACIONAL</p>
-        <h2 id="occurrence-detail-title">{typeLabel(item.tipo_ocorrencia || item.sub_tipo_ocorrencia)}</h2>
-        <span className={`occurrence-status ${statusTone(item)}`}>{statusLabel(item)}</span>
-        <dl className="occurrence-detail-fields">
-          {fields.map((field) => <div key={field.label}><dt>{field.label}</dt><dd>{field.value}</dd></div>)}
-        </dl>
-        <p className="occurrence-detail-privacy"><ShieldCheck size={15} aria-hidden="true" />Dados pessoais de envolvidos e evidências detalhadas permanecem fora desta lista protegida e não são exibidos nesta etapa.</p>
+
+        <p className="dashboard-eyebrow">BO DA GUARDA · PITANGUEIRAS</p>
+        <h2 id="occurrence-detail-title">{item.identidade}</h2>
+        <p className="occurrence-detail-type">{item.tipo_rotulo}</p>
+        <Selos item={item} compacto />
+
+        {item.relato ? (
+          <Bloco titulo="O que aconteceu">
+            <p className={`occurrence-detail-relato${relatoAberto ? " is-open" : ""}`}>{item.relato}</p>
+            {item.relato.length > 220 ? (
+              <button
+                type="button"
+                className="occurrence-detail-expand"
+                onClick={() => setRelatoAberto((valor) => !valor)}
+                aria-expanded={relatoAberto}
+              >
+                {relatoAberto ? "Mostrar menos" : "Mostrar todo o relato"}
+              </button>
+            ) : null}
+          </Bloco>
+        ) : null}
+
+        <Bloco titulo="Situação">
+          <div className="occurrence-detail-axes">
+            <span className="occurrence-axis">
+              <small>Situação</small>
+              <strong className={`occurrence-selo is-${tomSituacao(item.situacao)}`}>{item.situacao_rotulo}</strong>
+            </span>
+            <span className="occurrence-axis">
+              <small>Documento</small>
+              <strong className={`occurrence-selo is-${tomDocumento(item.documento)}`}>{item.documento_rotulo}</strong>
+            </span>
+            <span className="occurrence-axis">
+              <small>Sincronia</small>
+              <strong className={`occurrence-selo${item.sincronia_alarme ? " is-inconsistente" : " is-neutro"}`}>
+                {item.sincronia_rotulo}
+              </strong>
+            </span>
+          </div>
+          <div className="occurrence-detail-lines">
+            <Linha titulo="Início do atendimento" valor={formatarDia(item.data_hora_inicio, true)} />
+            <Linha titulo="Encerramento do atendimento" valor={formatarDia(item.data_hora_encerramento, true)} />
+            <Linha titulo="Duração" valor={duracao} />
+            <Linha titulo="BO concluído em" valor={formatarDia(item.completado_em, true)} />
+            <Linha titulo="Gravidade" valor={item.gravidade === "nao_informado" ? "" : item.gravidade_rotulo} />
+            <Linha titulo="Registrado em" valor={formatarDia(item.criado_em, true)} />
+          </div>
+          {item.encerramento_confianca === "coletavel" ? (
+            <p className="occurrence-detail-note">O horário de encerramento ainda pode ser registrado ao concluir o BO.</p>
+          ) : null}
+        </Bloco>
+
+        {temDadosLocal ? (
+          <Bloco titulo="Local">
+            <div className="occurrence-detail-lines">
+              <Linha titulo="Endereço" valor={item.local ?? item.rodovia ?? ""} />
+              <Linha titulo="Bairro" valor={item.bairro ?? ""} />
+              <Linha titulo="Referência" valor={item.referencia ?? ""} />
+              <Linha titulo="Rodovia" valor={item.rodovia ?? ""} />
+              <Linha
+                titulo="Coordenadas"
+                valor={
+                  item.tem_coordenada && item.latitude !== null && item.longitude !== null
+                    ? `${item.latitude.toFixed(5)}, ${item.longitude.toFixed(5)}`
+                    : ""
+                }
+              />
+            </div>
+          </Bloco>
+        ) : null}
+
+        <Bloco titulo="Equipe">
+          <div className="occurrence-detail-lines">
+            <Linha titulo="Responsável" valor={equipe.responsavel} />
+            <Linha titulo="Apoio" valor={item.apoio.map((nome) => `GM ${nome}`).join(", ")} />
+          </div>
+          {equipe.nota ? <p className="occurrence-detail-note">{equipe.nota}</p> : null}
+        </Bloco>
+
+        <Bloco titulo="Documentos e evidências">
+          <ul className="occurrence-detail-counts">
+            {item.fotos_total > 0 ? <li>{item.fotos_total} foto{item.fotos_total === 1 ? "" : "s"}</li> : null}
+            {item.anexos_total > 0 ? (
+              <li>
+                {item.anexos_total} arquivo{item.anexos_total === 1 ? "" : "s"} anexado{item.anexos_total === 1 ? "" : "s"}
+              </li>
+            ) : null}
+            {item.tem_retificacao ? <li>Registro com retificação</li> : null}
+            {item.fotos_total === 0 && item.anexos_total === 0 ? <li>Nenhuma evidência anexada.</li> : null}
+          </ul>
+        </Bloco>
+
+        {item.envolvidos_total > 0 ? (
+          <Bloco titulo="Envolvidos">
+            <p className="occurrence-detail-note">
+              {item.envolvidos_total} pessoa{item.envolvidos_total === 1 ? "" : "s"} registrada
+              {item.envolvidos_total === 1 ? "" : "s"} neste BO. Os dados pessoais ficam apenas no registro completo.
+            </p>
+          </Bloco>
+        ) : null}
+
+        {item.numero_bo || item.orgao_bo || item.sincronizado_em || item.origem_criacao ? (
+          <Bloco titulo="Vínculo externo">
+            <div className="occurrence-detail-lines">
+              <Linha titulo="BO externo" valor={item.numero_bo ?? ""} />
+              <Linha titulo="Órgão" valor={item.orgao_bo ?? ""} />
+              <Linha titulo="Sincronizado em" valor={formatarDia(item.sincronizado_em, true)} />
+              <Linha
+                titulo="Origem do registro"
+                valor={
+                  item.origem_criacao === "app"
+                    ? "Criado neste app"
+                    : item.origem_criacao === "legado"
+                      ? "Importado do sistema anterior"
+                      : ""
+                }
+              />
+            </div>
+          </Bloco>
+        ) : null}
+
+        {item.documento === "incompleto" ? (
+          <FormularioConcluirBo item={item} oficiais={oficiais} onConcluido={onConcluido} />
+        ) : null}
+
+        <p className="occurrence-detail-privacy">
+          <ShieldCheck size={16} aria-hidden="true" />
+          <span>
+            Consulta protegida. Situação, documento e sincronia vêm do servidor — nada é calculado no aparelho.
+          </span>
+        </p>
       </section>
     </div>
   );
@@ -246,123 +868,268 @@ function OccurrenceDetail({ item, onClose }: { item: OccurrenceListItem; onClose
 
 export default function Occurrences({ profile }: { profile: PerfilFuncional }) {
   const manager = isManagementRole(profile.perfil);
-  const [quickFilter, setQuickFilter] = useState<QuickOccurrenceFilter>(manager ? "all" : "mine");
-  const [filters, setFilters] = useState<OccurrenceFilters>(EMPTY_OCCURRENCE_FILTERS);
-  const [draftFilters, setDraftFilters] = useState<OccurrenceFilters>(EMPTY_OCCURRENCE_FILTERS);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [officers, setOfficers] = useState<Array<{ id: string; label: string }>>([]);
-  const [items, setItems] = useState<OccurrenceListItem[]>([]);
-  const [summary, setSummary] = useState<OccurrenceSummary>(EMPTY_OCCURRENCE_SUMMARY);
-  const [totalCount, setTotalCount] = useState(0);
-  const [currentPage, setCurrentPage] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const inicial = useRef(lerFiltroDaUrl());
+  const [filtro, setFiltro] = useState<FiltroOcorrencias>(() =>
+    manager || inicial.current.filtro.aba === "atendimento" || inicial.current.filtro.aba === "todas"
+      ? inicial.current.filtro
+      : { ...inicial.current.filtro, aba: "todas" },
+  );
+  const [ordenacao, setOrdenacao] = useState<OrdenacaoOcorrencia>(inicial.current.ordenacao);
+  const [totais, setTotais] = useState<TotaisOcorrencias | null>(null);
+  const [totaisEscopo, setTotaisEscopo] = useState<TotaisOcorrencias | null>(null);
+  const [itens, setItens] = useState<OcorrenciaItem[]>([]);
+  const [agrupamentos, setAgrupamentos] = useState<
+    Array<{ chave: string; titulo: string; quantidade: number }>
+  >([]);
+  const [total, setTotal] = useState(0);
+  const [temMais, setTemMais] = useState(false);
+  const [pagina, setPagina] = useState(PAGINA_INICIAL);
+  const [carregando, setCarregando] = useState(true);
+  const [atualizando, setAtualizando] = useState(false);
+  const [carregandoMais, setCarregandoMais] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [avisoCoerencia, setAvisoCoerencia] = useState(false);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
-  const [selectedItem, setSelectedItem] = useState<OccurrenceListItem | null>(null);
-  const requestId = useRef(0);
-  const itemsRef = useRef<OccurrenceListItem[]>([]);
+  const [aberto, setAberto] = useState<OcorrenciaItem | null>(null);
+  const [oficiais, setOficiais] = useState<Array<{ id: string; label: string }>>([]);
+  const [painelAberto, setPainelAberto] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(() => lerEliminarAviso());
+  const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
+  const [detalheCarregando, setDetalheCarregando] = useState<string | null>(inicial.current.detalhe);
+  const [detalheErro, setDetalheErro] = useState<string | null>(null);
+  const solicitacao = useRef(0);
+  const itensRef = useRef<OcorrenciaItem[]>([]);
+  const numeroAberto = useRef<string | null>(inicial.current.detalhe);
 
-  const load = useCallback(async (page: number, append: boolean, filterChanged = false) => {
-    const request = ++requestId.current;
-    setError(null);
-    if (append) setIsLoadingMore(true);
-    else {
-      setIsLoadingMore(false);
-      if (filterChanged || itemsRef.current.length === 0) setIsLoading(true);
-      else setIsRefreshing(true);
-    }
+  const consolidarItens = useCallback((proximos: OcorrenciaItem[], append: boolean) => {
+    const base = append ? itensRef.current : [];
+    const novos = proximos.filter((item) => !base.some((atual) => atual.id === item.id));
+    const consolidados = append ? [...base, ...novos] : proximos;
+    itensRef.current = consolidados;
+    setItens(consolidados);
+  }, []);
 
-    try {
-      const result = await loadOccurrencePage({
-        profileId: profile.id,
-        profileRole: profile.perfil,
-        quickFilter,
-        filters,
-        page,
-        includeSummary: !append,
-      });
-      if (request !== requestId.current) return;
-      const nextItems = append
-        ? [...itemsRef.current, ...result.items.filter((item) => !itemsRef.current.some((current) => current.id === item.id))]
-        : result.items;
-      itemsRef.current = nextItems;
-      setItems(nextItems);
-      setCurrentPage(page);
-      setTotalCount(result.totalCount);
-      if (!append) setSummary(result.summary);
-    } catch (cause) {
-      if (request !== requestId.current) return;
-      console.error("Erro ao carregar ocorrências:", cause);
-      setError("Não foi possível carregar as ocorrências. Confira a conexão e tente novamente.");
-    } finally {
-      if (request === requestId.current) {
-        setIsLoading(false);
-        setIsRefreshing(false);
-        setIsLoadingMore(false);
+  const carregar = useCallback(
+    async (destino: number, append: boolean, manterLista = false) => {
+      const id = ++solicitacao.current;
+      if (append) setCarregandoMais(true);
+      else if (manterLista) setAtualizando(true);
+      else {
+        setCarregando(true);
+        setAtualizando(false);
       }
-    }
-  }, [filters, profile.id, profile.perfil, quickFilter]);
+      setErro(null);
+      try {
+        const passada = await carregarPainelOcorrencias(filtro, destino, ordenacao);
+        if (id !== solicitacao.current) return;
+        consolidarItens(passada.pagina.itens, append);
+        setTotais(passada.totais);
+        setTotaisEscopo(passada.totaisEscopo);
+        setAgrupamentos(passada.pagina.agrupamentos);
+        setTotal(passada.pagina.total);
+        setTemMais(passada.pagina.temMais);
+        setPagina(destino);
+        setAvisoCoerencia(passada.avisoCoerencia);
+      } catch (cause) {
+        if (id !== solicitacao.current) return;
+        setErro(cause instanceof Error ? cause.message : "Não foi possível carregar as ocorrências.");
+      } finally {
+        if (id === solicitacao.current) {
+          setCarregando(false);
+          setAtualizando(false);
+          setCarregandoMais(false);
+        }
+      }
+    },
+    [consolidarItens, filtro, ordenacao],
+  );
 
   useEffect(() => {
-    itemsRef.current = [];
-    setItems([]);
-    setTotalCount(0);
-    setCurrentPage(0);
-    void load(0, false, true);
-    return () => { requestId.current += 1; };
-  }, [load]);
-
-  useEffect(() => {
-    if (!manager) return;
-    void loadOfficerOptions().then(setOfficers);
-  }, [manager]);
-
-  useEffect(() => {
-    const onOnline = () => setIsOnline(true);
-    const onOffline = () => setIsOnline(false);
-    window.addEventListener("online", onOnline);
-    window.addEventListener("offline", onOffline);
+    itensRef.current = [];
+    setItens([]);
+    void carregar(PAGINA_INICIAL, false);
     return () => {
-      window.removeEventListener("online", onOnline);
-      window.removeEventListener("offline", onOffline);
+      solicitacao.current += 1;
+    };
+  }, [carregar]);
+
+  useEffect(() => {
+    void loadOfficerOptions()
+      .then((lista) => lista.filter((oficial) => oficial.id !== profile.id))
+      .then(setOficiais)
+      .catch(() => setOficiais([]));
+  }, [profile.id]);
+
+  useEffect(() => {
+    escreverUrl(filtro, ordenacao, aberto ? numeroAberto.current : null, false);
+  }, [filtro, ordenacao, aberto]);
+
+  useEffect(() => {
+    const aoEntrar = () => setIsOnline(true);
+    const aoSair = () => setIsOnline(false);
+    window.addEventListener("online", aoEntrar);
+    window.addEventListener("offline", aoSair);
+    return () => {
+      window.removeEventListener("online", aoEntrar);
+      window.removeEventListener("offline", aoSair);
     };
   }, []);
 
-  const hasMore = items.length < totalCount;
-  const closeSelectedItem = useCallback(() => setSelectedItem(null), []);
+  useEffect(() => {
+    const numero = inicial.current.detalhe;
+    if (!numero) return;
+    void buscarOcorrenciaPorNumero(numero)
+      .then((item) => {
+        if (item) {
+          numeroAberto.current = item.numero_ocorrencia ?? item.id;
+          setAberto(item);
+          return;
+        }
+        setDetalheErro(`Não encontramos a ocorrência ${numero} nesta conta. Mostrando a lista.`);
+      })
+      .catch((cause: unknown) => {
+        setDetalheErro(cause instanceof Error ? cause.message : "Não foi possível abrir a ocorrência.");
+      })
+      .finally(() => setDetalheCarregando(null));
+  }, []);
 
-  function applyFilters(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setFilters({ ...draftFilters });
-    setShowAdvanced(false);
+  function mudarFiltro(mudar: (atual: FiltroOcorrencias) => FiltroOcorrencias) {
+    setFiltro((atual) => mudar(atual));
+    setMensagemSucesso(null);
   }
 
-  function clearFilters() {
-    setDraftFilters(EMPTY_OCCURRENCE_FILTERS);
-    setFilters(EMPTY_OCCURRENCE_FILTERS);
+  const mudarAba = (aba: AbaOcorrencia) => mudarFiltro((atual) => ({ ...atual, aba }));
+
+  function abrir(item: OcorrenciaItem) {
+    numeroAberto.current = item.numero_ocorrencia ?? item.id;
+    setDetalheErro(null);
+    setAberto(item);
+    escreverUrl(filtro, ordenacao, numeroAberto.current, true);
   }
 
-  function loadMore() {
-    const nextPage = currentPage + 1;
-    void load(nextPage, true);
+  function fechar() {
+    setAberto(null);
+    numeroAberto.current = null;
   }
 
-  function goBack() {
-    window.location.hash = "#/inicio";
+  function tentarNovamente() {
+    void carregar(PAGINA_INICIAL, false, itensRef.current.length > 0);
   }
+
+  function limparFiltros() {
+    mudarFiltro((atual) => ({ ...FILTRO_VAZIO, aba: atual.aba }));
+  }
+
+  const baseTotais = totaisEscopo ?? totais;
+  const chips = chipsAtivos(filtro, baseTotais);
+  const filtrosAtivos = contarFiltrosAtivos(filtro);
+
+  const abas: Array<{ id: AbaOcorrencia; rotulo: string; contador: number | null }> = [
+    { id: "todas", rotulo: "Todas", contador: baseTotais?.abas.todas ?? null },
+    ...(manager ? [{ id: "minhas" as const, rotulo: "Minhas", contador: null }] : []),
+    ...(manager ? [{ id: "corporacao" as const, rotulo: "Corporação", contador: null }] : []),
+    { id: "atendimento", rotulo: "Em atendimento", contador: baseTotais?.abas.atendimento ?? null },
+    { id: "complementar", rotulo: "A complementar", contador: baseTotais?.abas.complementar ?? null },
+    { id: "encerradas", rotulo: "Encerradas", contador: baseTotais?.abas.encerradas ?? null },
+    { id: "inconsistente", rotulo: "Inconsistências", contador: baseTotais?.abas.inconsistente ?? null },
+  ];
+
+  const grupos: Array<{ chave: string; titulo: string; quantidade: number; itens: OcorrenciaItem[] }> = useMemo(() => {
+    if (!agrupamentos.length) return [];
+    const usados = new Set<string>();
+    const lista = agrupamentos.map((grupo) => {
+      const itensGrupo = itens.filter((item) => {
+        if (usados.has(item.id)) return false;
+        return chaveDeAgrupamento(item.data_hora_inicio || item.criado_em) === grupo.chave;
+      });
+      itensGrupo.forEach((item) => usados.add(item.id));
+      return { chave: grupo.chave, titulo: grupo.titulo, quantidade: grupo.quantidade, itens: itensGrupo };
+    });
+    const restante = itens.filter((item) => !usados.has(item.id));
+    if (restante.length) lista.push({ chave: "demais", titulo: "Demais registros", quantidade: restante.length, itens: restante });
+    return lista;
+  }, [agrupamentos, itens]);
+
+  const kpisAba: Array<CartaoIndicador & { aba: AbaOcorrencia }> = [];
+  const kpisEstaticos: CartaoIndicador[] = [];
+  if (baseTotais) {
+    const construir = (aba: AbaOcorrencia, rotulo: string, valor: number, tom: string) => {
+      if (valor > 0) kpisAba.push({ aba, rotulo, valor: valor.toLocaleString("pt-BR"), tom });
+    };
+    if (manager) {
+      construir("complementar", "A complementar", baseTotais.abas.complementar, "incompleto");
+      construir("atendimento", "Em atendimento", baseTotais.abas.atendimento, "ativo");
+      const duracaoMedia = formatarDuracao(baseTotais.metricas.duracao_media_min);
+      if (duracaoMedia) {
+        kpisEstaticos.push({
+          rotulo: "Duração média",
+          valor: duracaoMedia,
+          tom: "duracao",
+          nota:
+            baseTotais.metricas.taxa_encerramento_pct !== null
+              ? `Encerramento ${baseTotais.metricas.taxa_encerramento_pct}%`
+              : undefined,
+        });
+      }
+      construir("encerradas", "Encerradas", baseTotais.abas.encerradas, "concluido");
+    } else {
+      construir("atendimento", "Em atendimento", baseTotais.abas.atendimento, "ativo");
+      construir("complementar", "A complementar", baseTotais.abas.complementar, "incompleto");
+      construir("encerradas", "Encerradas no período", baseTotais.abas.encerradas, "concluido");
+    }
+  }
+
+  function conteudoVazio(): { titulo: string; texto: string } {
+    if (filtrosAtivos > 0) {
+      return {
+        titulo: "Nenhum registro com esses filtros",
+        texto: "Ajuste ou limpe os filtros para ver mais ocorrências.",
+      };
+    }
+    if (filtro.aba === "atendimento")
+      return { titulo: "Nenhum atendimento em aberto", texto: "Todos os registros deste recorte já foram encerrados." };
+    if (filtro.aba === "complementar")
+      return { titulo: "Nada a complementar", texto: "Todos os BOs da Guarda deste recorte estão concluídos." };
+    if (filtro.aba === "encerradas")
+      return { titulo: "Nenhuma ocorrência encerrada", texto: "Ainda não há encerramentos neste período." };
+    if (filtro.aba === "inconsistente")
+      return { titulo: "Nenhuma inconsistência de datas", texto: "Nenhum registro com término antes do início." };
+    return {
+      titulo: "Nenhuma ocorrência encontrada",
+      texto: "Quando um BO for registrado nesta conta, ele aparece aqui.",
+    };
+  }
+
+  const vazio = conteudoVazio();
+  const mostrarGrupos = agrupamentos.length > 1 && grupos.some((grupo) => grupo.itens.length > 0);
 
   return (
     <main className="occurrences-shell">
       <header className="occurrences-topbar">
-        <button className="occurrences-back" type="button" onClick={goBack} aria-label="Voltar ao painel"><ArrowLeft size={18} aria-hidden="true" /><span>Painel</span></button>
+        <button
+          className="occurrences-back"
+          type="button"
+          onClick={() => {
+            window.location.hash = "#/inicio";
+          }}
+          aria-label="Voltar ao painel"
+        >
+          <ArrowLeft size={18} aria-hidden="true" />
+          <span>Painel</span>
+        </button>
         <a className="occurrences-brand" href="#/inicio" aria-label="Guarda Municipal de Pitangueiras, início">
           <img src={brasaoGuarda} alt="" />
-          <span><strong>Guarda Municipal</strong><small>Pitangueiras · PR</small></span>
+          <span>
+            <strong>Guarda Municipal</strong>
+            <small>Pitangueiras · PR</small>
+          </span>
         </a>
-        <div className={`occurrences-connectivity ${isOnline ? "is-online" : "is-offline"}`} role="status" aria-label={isOnline ? "Você está online" : "Você está offline"}>
-          {isOnline ? <Wifi size={15} aria-hidden="true" /> : <WifiOff size={15} aria-hidden="true" />}
+        <div
+          className={`occurrences-connectivity ${isOnline ? "is-online" : "is-offline"}`}
+          role="status"
+          aria-label={isOnline ? "Você está online" : "Você está offline"}
+        >
+          {isOnline ? <Wifi size={16} aria-hidden="true" /> : <WifiOff size={16} aria-hidden="true" />}
           <span>{isOnline ? "Online" : "Offline"}</span>
         </div>
       </header>
@@ -370,104 +1137,288 @@ export default function Occurrences({ profile }: { profile: PerfilFuncional }) {
       <div className="occurrences-content">
         <section className="occurrences-hero" aria-labelledby="occurrences-title">
           <div className="occurrences-hero-copy">
-            <p className="dashboard-eyebrow">{manager ? "CENTRAL DA EQUIPE" : "SUA ATUAÇÃO"} · REGISTROS OPERACIONAIS</p>
+            <p className="dashboard-eyebrow">
+              {manager ? "CENTRAL DA CORPORAÇÃO" : "SUA ATUAÇÃO"} · REGISTROS OPERACIONAIS
+            </p>
             <h1 id="occurrences-title">Ocorrências</h1>
-            <p>{manager ? "Acompanhe os registros da equipe e identifique o que precisa de atenção." : "Consulte suas ocorrências e acompanhe a situação dos registros."}</p>
+            <p>
+              {manager
+                ? "Situação, documento e sincronia de cada BO vêm do servidor."
+                : "Consulte os atendimentos em que você entrou e o que ainda precisa ser fechado."}
+            </p>
           </div>
           <div className="occurrences-hero-actions">
-            <span className="occurrences-total"><strong>{totalCount.toLocaleString("pt-BR")}</strong> {totalCount === 1 ? "registro visível" : "registros visíveis"}</span>
-            <button className="occurrences-refresh" type="button" onClick={() => void load(0, false)} disabled={isLoading || isRefreshing}>
-              <RefreshCw size={15} className={isRefreshing ? "spin" : ""} aria-hidden="true" />
-              <span>{isRefreshing ? "Atualizando…" : "Atualizar"}</span>
+            <span className="occurrences-total">
+              <strong>{total.toLocaleString("pt-BR")}</strong>{" "}
+              {total === 1 ? "registro neste filtro" : "registros neste filtro"}
+              {totais ? <em>Atualizado às {formatarHorarioGerado(totais.geradoEm)}</em> : null}
+            </span>
+            <button className="occurrences-refresh" type="button" onClick={tentarNovamente} disabled={carregando || atualizando}>
+              <RefreshCw size={16} className={atualizando ? "spin" : ""} aria-hidden="true" />
+              <span>{atualizando ? "Atualizando…" : "Atualizar"}</span>
             </button>
-            <a className="occurrences-create" href={`${LEGACY_OPERATIONAL_URL}#nova-ocorrencia`}>
-              <FilePlus2 size={17} aria-hidden="true" /><span>Nova ocorrência</span>
+            <a className="occurrences-create" href="#/ocorrencias/nova">
+              <FilePlus2 size={17} aria-hidden="true" />
+              <span>Nova ocorrência</span>
             </a>
           </div>
         </section>
 
-        {!isOnline && (
-          <div className="occurrences-offline-banner" role="status"><WifiOff size={15} aria-hidden="true" /><span>Sem conexão. Os dados já carregados permanecem visíveis; novos registros continuam no fluxo operacional existente.</span></div>
-        )}
+        {!isOnline ? (
+          <div className="occurrences-offline-banner" role="status">
+            <WifiOff size={16} aria-hidden="true" />
+            <span>Sem conexão. Os registros já carregados continuam visíveis.</span>
+          </div>
+        ) : null}
 
-        <section className="occurrences-summary" aria-label="Resumo de ocorrências">
-          <StatCard label="Rascunhos" value={summary.drafts} tone="is-draft" />
-          <StatCard label="Pendentes" value={summary.pending} tone="is-pending" />
-          <StatCard label="Em andamento" value={summary.inProgress} tone="is-progress" />
-          <StatCard label="Finalizadas" value={summary.finalized} tone="is-finalized" />
-        </section>
+        {aviso || mensagemSucesso ? (
+          <div className="occurrences-flash" role="status">
+            <Check size={16} aria-hidden="true" />
+            <span>{aviso ?? mensagemSucesso}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setAviso(null);
+                setMensagemSucesso(null);
+              }}
+              aria-label="Fechar aviso"
+            >
+              <X size={15} aria-hidden="true" />
+            </button>
+          </div>
+        ) : null}
+
+        {detalheErro ? (
+          <div className="occurrences-offline-banner is-alert" role="alert">
+            <CircleAlert size={16} aria-hidden="true" />
+            <span>{detalheErro}</span>
+          </div>
+        ) : null}
+
+        {avisoCoerencia ? (
+          <p className="occurrences-coherence" role="status">
+            <CircleAlert size={16} aria-hidden="true" />
+            <span>Os totais não bateram com a lista. Atualize para conferir os números.</span>
+          </p>
+        ) : null}
+
+        {baseTotais && !avisoCoerencia && (kpisAba.length > 0 || kpisEstaticos.length > 0) ? (
+          <section className="occurrences-summary" aria-label="Indicadores do período">
+            {kpisAba.map((cartao) => (
+              <KpiCard
+                key={cartao.rotulo}
+                cartao={cartao}
+                ativo={filtro.aba === cartao.aba}
+                onClick={() => mudarAba(cartao.aba)}
+              />
+            ))}
+            {kpisEstaticos.map((cartao) => (
+              <KpiEstatico key={cartao.rotulo} cartao={cartao} />
+            ))}
+          </section>
+        ) : null}
 
         <section className="occurrences-workspace" aria-label="Lista e filtros de ocorrências">
           <div className="occurrences-toolbar">
-            <div className="occurrences-filter-tabs" role="group" aria-label="Filtrar ocorrências">
-              {QUICK_FILTERS.map((filter) => (
+            <div className="occurrences-filter-tabs" role="group" aria-label="Abas de ocorrências">
+              {abas.map((aba) => (
                 <button
-                  key={filter.id}
+                  key={aba.id}
                   type="button"
-                  aria-pressed={quickFilter === filter.id}
-                  className={quickFilter === filter.id ? "is-active" : ""}
-                  onClick={() => setQuickFilter(filter.id)}
-                >{filter.label}</button>
+                  aria-pressed={filtro.aba === aba.id}
+                  className={filtro.aba === aba.id ? "is-active" : ""}
+                  onClick={() => mudarAba(aba.id)}
+                >
+                  <span>{aba.rotulo}</span>
+                  {aba.contador !== null && !avisoCoerencia ? <small>{aba.contador.toLocaleString("pt-BR")}</small> : null}
+                </button>
               ))}
             </div>
             <div className="occurrences-toolbar-actions">
-              <button className={`occurrences-advanced-toggle ${showAdvanced ? "is-open" : ""}`} type="button" onClick={() => setShowAdvanced((value) => !value)} aria-expanded={showAdvanced} aria-controls="occurrences-advanced-panel">
-                <SlidersHorizontal size={15} aria-hidden="true" /><span>Filtros</span><ChevronDown size={14} aria-hidden="true" />
+              <label className="occurrences-sort-field">
+                <span>Ordenar</span>
+                <select
+                  value={ordenacao}
+                  onChange={(event) => {
+                    const valor = event.target.value as OrdenacaoOcorrencia;
+                    setOrdenacao(valor);
+                    gravarOrdenacao(valor);
+                  }}
+                >
+                  {ORDENACOES.map((opcao) => (
+                    <option key={opcao} value={opcao}>
+                      {ROTULO_ORDENACAO[opcao]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                className={`occurrences-advanced-toggle${painelAberto ? " is-open" : ""}`}
+                type="button"
+                onClick={() => setPainelAberto((valor) => !valor)}
+                aria-expanded={painelAberto}
+                aria-controls="occurrences-advanced-panel"
+              >
+                <SlidersHorizontal size={16} aria-hidden="true" />
+                <span>Filtros{filtrosAtivos ? ` · ${filtrosAtivos}` : ""}</span>
+                <ChevronDown size={15} aria-hidden="true" />
               </button>
             </div>
           </div>
 
-          {showAdvanced && (
-            <form id="occurrences-advanced-panel" className="occurrences-advanced-panel" onSubmit={applyFilters}>
-              <label className="occurrences-search-field">
-                <span>Buscar</span>
-                <span className="occurrences-input-wrap"><Search size={15} aria-hidden="true" /><input type="search" value={draftFilters.search} onChange={(event) => setDraftFilters({ ...draftFilters, search: event.target.value })} placeholder="Tipo, número ou local" /></span>
-              </label>
-              <label><span>Período inicial</span><input type="date" value={draftFilters.from} onChange={(event) => setDraftFilters({ ...draftFilters, from: event.target.value })} /></label>
-              <label><span>Período final</span><input type="date" value={draftFilters.to} onChange={(event) => setDraftFilters({ ...draftFilters, to: event.target.value })} /></label>
-              <label><span>Status</span><select value={draftFilters.status} onChange={(event) => setDraftFilters({ ...draftFilters, status: event.target.value })}><option value="">Todos os status</option>{STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-              <label><span>Gravidade</span><select value={draftFilters.severity} onChange={(event) => setDraftFilters({ ...draftFilters, severity: event.target.value })}><option value="">Todas</option><option value="Baixa">Baixa</option><option value="Média">Média</option><option value="Alta">Alta</option><option value="Crítica">Crítica</option></select></label>
-              <label><span>Tipo de ocorrência</span><input value={draftFilters.type} onChange={(event) => setDraftFilters({ ...draftFilters, type: event.target.value })} placeholder="Ex.: furto" /></label>
-              <label><span>Local</span><input value={draftFilters.locality} onChange={(event) => setDraftFilters({ ...draftFilters, locality: event.target.value })} placeholder="Rua, bairro ou referência" /></label>
-              {manager && <label><span>GM responsável</span><select value={draftFilters.responsibleId} onChange={(event) => setDraftFilters({ ...draftFilters, responsibleId: event.target.value })}><option value="">Todos os GMs</option>{officers.map((officer) => <option key={officer.id} value={officer.id}>{officer.label}</option>)}</select></label>}
-              <div className="occurrences-filter-checks">
-                <label><input type="checkbox" checked={draftFilters.rectificationsOnly} onChange={(event) => setDraftFilters({ ...draftFilters, rectificationsOnly: event.target.checked })} /><span>Com retificação</span></label>
-                <label><input type="checkbox" checked={draftFilters.pendingSyncOnly} onChange={(event) => setDraftFilters({ ...draftFilters, pendingSyncOnly: event.target.checked })} /><span>Pendente de sincronização</span></label>
-              </div>
-              <div className="occurrences-filter-actions"><button type="button" className="occurrences-clear-button" onClick={clearFilters}>Limpar filtros</button><button type="submit" className="occurrences-apply-button"><Filter size={14} aria-hidden="true" />Aplicar filtros</button></div>
-            </form>
-          )}
+          {painelAberto ? (
+            <PainelFiltros
+              filtro={filtro}
+              totais={baseTotais}
+              onMudar={mudarFiltro}
+              onFechar={() => setPainelAberto(false)}
+            />
+          ) : null}
+
+          {chips.length ? (
+            <div className="occurrences-active-chips" aria-label="Filtros ativos">
+              {chips.map((chip) => (
+                <button
+                  key={chip.chave}
+                  type="button"
+                  className="occurrences-chip"
+                  onClick={() => mudarFiltro(chip.remover)}
+                >
+                  <span>{chip.rotulo}</span>
+                  <X size={14} aria-hidden="true" />
+                </button>
+              ))}
+              <button type="button" className="occurrences-chip is-clear" onClick={limparFiltros}>
+                <X size={14} aria-hidden="true" /> Limpar tudo
+              </button>
+            </div>
+          ) : null}
 
           <div className="occurrences-list-heading">
-            <div><p className="dashboard-eyebrow">{manager ? "VISÃO DA EQUIPE" : "REGISTROS PRÓPRIOS E COM PARTICIPAÇÃO"}</p><h2>{quickFilter === "pending" ? "Pendências" : quickFilter === "finalized" ? "Ocorrências finalizadas" : quickFilter === "mine" ? "Minhas ocorrências" : "Todas as ocorrências"}</h2></div>
-            {isRefreshing && <span className="occurrences-refreshing"><RefreshCw size={13} className="spin" aria-hidden="true" />Atualizando lista</span>}
+            <div>
+              <p className="dashboard-eyebrow">{manager ? "DADOS DO SERVIDOR" : "REGISTROS EM QUE VOCÊ ENTROU"}</p>
+              <h2>{abas.find((aba) => aba.id === filtro.aba)?.rotulo ?? "Ocorrências"}</h2>
+            </div>
+            {atualizando ? (
+              <span className="occurrences-refreshing">
+                <RefreshCw size={14} className="spin" aria-hidden="true" /> Atualizando lista
+              </span>
+            ) : null}
           </div>
 
-          {error && items.length > 0 && (
-            <div className="occurrences-error" role="alert"><CircleAlert size={17} aria-hidden="true" /><span>{error}</span><button type="button" onClick={() => void load(0, false)}>Tentar novamente</button></div>
-          )}
+          {erro && itens.length > 0 ? (
+            <div className="occurrences-error" role="alert">
+              <CircleAlert size={17} aria-hidden="true" />
+              <span>{erro}</span>
+              <button type="button" onClick={tentarNovamente}>
+                Tentar novamente
+              </button>
+            </div>
+          ) : null}
 
-          {isLoading && items.length === 0 ? (
-            <div className="occurrences-loading" role="status" aria-live="polite"><span className="occurrences-spinner" aria-hidden="true" /><strong>Carregando ocorrências</strong><small>Consultando os registros permitidos para o seu perfil.</small></div>
-          ) : error && items.length === 0 ? (
-            <div className="occurrences-empty-state is-error"><CircleAlert size={25} aria-hidden="true" /><strong>Não foi possível carregar a lista</strong><p>{error}</p><button type="button" onClick={() => void load(0, false)}><RefreshCw size={14} aria-hidden="true" />Tentar novamente</button></div>
-          ) : items.length === 0 ? (
-            <div className="occurrences-empty-state"><span><ClipboardList size={25} aria-hidden="true" /></span><strong>Nenhuma ocorrência encontrada</strong><p>Altere os filtros ou tente novamente quando houver novos registros.</p><button type="button" onClick={clearFilters}><X size={14} aria-hidden="true" />Limpar filtros</button></div>
+          {carregando && itens.length === 0 ? (
+            <ul className="occurrence-list">
+              {ESQUELETO.map((linha) => (
+                <SkeletonCard key={linha} />
+              ))}
+            </ul>
+          ) : erro && itens.length === 0 ? (
+            <div className="occurrences-empty-state is-error">
+              <CircleAlert size={26} aria-hidden="true" />
+              <strong>Não foi possível carregar a lista</strong>
+              <p>{erro}</p>
+              <button type="button" onClick={tentarNovamente}>
+                <RefreshCw size={15} aria-hidden="true" /> Tentar novamente
+              </button>
+            </div>
+          ) : !carregando && itens.length === 0 ? (
+            <div className="occurrences-empty-state">
+              <span>
+                <ClipboardList size={26} aria-hidden="true" />
+              </span>
+              <strong>{vazio.titulo}</strong>
+              <p>{vazio.texto}</p>
+              <button type="button" onClick={limparFiltros}>
+                <X size={15} aria-hidden="true" /> Limpar filtros
+              </button>
+            </div>
+          ) : mostrarGrupos ? (
+            <div className="occurrence-groups">
+              {grupos
+                .filter((grupo) => grupo.itens.length > 0)
+                .map((grupo) => (
+                  <section key={grupo.chave} className="occurrence-group">
+                    <h3 className="occurrence-group-title">
+                      <span>{grupo.titulo}</span>
+                      <small>{grupo.quantidade.toLocaleString("pt-BR")}</small>
+                    </h3>
+                    <ul className="occurrence-list">
+                      {grupo.itens.map((item) => (
+                        <CartaoOcorrencia key={item.id} item={item} onAbrir={abrir} />
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+            </div>
           ) : (
             <>
               <ul className="occurrence-list">
-                {items.map((item) => <OccurrenceCard key={item.id} item={item} onOpen={setSelectedItem} />)}
+                {itens.map((item) => (
+                  <CartaoOcorrencia key={item.id} item={item} onAbrir={abrir} />
+                ))}
               </ul>
-              {hasMore && <div className="occurrences-load-more"><button type="button" onClick={loadMore} disabled={isLoadingMore}>{isLoadingMore ? <><RefreshCw size={14} className="spin" aria-hidden="true" />Carregando…</> : <>Carregar mais <ArrowRight size={14} aria-hidden="true" /></>}</button><small>{items.length.toLocaleString("pt-BR")} de {totalCount.toLocaleString("pt-BR")} registros</small></div>}
-              {!hasMore && totalCount > 0 && <p className="occurrences-list-end"><Check size={14} aria-hidden="true" />Você está vendo todas as {totalCount.toLocaleString("pt-BR")} ocorrências deste filtro.</p>}
+              {temMais ? (
+                <div className="occurrences-load-more">
+                  <button type="button" onClick={() => void carregar(pagina + 1, true)} disabled={carregandoMais}>
+                    {carregandoMais ? (
+                      <>
+                        <RefreshCw size={15} className="spin" aria-hidden="true" /> Carregando…
+                      </>
+                    ) : (
+                      <>
+                        Carregar mais <ArrowRight size={15} aria-hidden="true" />
+                      </>
+                    )}
+                  </button>
+                  <small>
+                    {itens.length.toLocaleString("pt-BR")} de {total.toLocaleString("pt-BR")} registros
+                  </small>
+                </div>
+              ) : total > 0 ? (
+                <p className="occurrences-list-end">
+                  <Check size={15} aria-hidden="true" /> Você está vendo todas as {total.toLocaleString("pt-BR")} ocorrências
+                  deste filtro.
+                </p>
+              ) : null}
             </>
           )}
         </section>
 
-        <footer className="occurrences-footer"><ShieldCheck size={15} aria-hidden="true" /><span>Consulta protegida · Os resultados obedecem à sessão e às permissões do Supabase.</span><span className="occurrences-footer-role">{manager ? "Visão da equipe" : "Visão individual"}</span></footer>
+        <footer className="occurrences-footer">
+          <ShieldCheck size={16} aria-hidden="true" />
+          <span>Consulta protegida · Os resultados obedecem à sessão e às permissões do Supabase.</span>
+          <span className="occurrences-footer-role">{manager ? "Visão da corporação" : "Visão individual"}</span>
+        </footer>
       </div>
 
-      {selectedItem && <OccurrenceDetail item={selectedItem} onClose={closeSelectedItem} />}
+      {detalheCarregando ? (
+        <div className="occurrences-loading-deep" role="status">
+          <RefreshCw size={16} className="spin" aria-hidden="true" /> Abrindo a ocorrência {detalheCarregando}…
+        </div>
+      ) : null}
+
+      {aberto ? (
+        <DetalheOcorrencia
+          item={aberto}
+          oficiais={oficiais}
+          onClose={fechar}
+          onConcluido={(mensagem) => {
+            setMensagemSucesso(mensagem);
+            fechar();
+            void carregar(PAGINA_INICIAL, false, true);
+          }}
+        />
+      ) : null}
     </main>
   );
 }
