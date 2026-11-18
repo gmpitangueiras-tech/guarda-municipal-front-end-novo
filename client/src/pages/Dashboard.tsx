@@ -2,18 +2,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   Bell,
-  CheckCheck,
   CircleAlert,
   ClipboardList,
   RefreshCw,
   Shield,
   ShieldCheck,
   UserRound,
-  X,
 } from "lucide-react";
 import type { PerfilFuncional } from "@/lib/auth";
 import DashboardBottomNav from "@/components/DashboardBottomNav";
 import DashboardActivity from "@/components/DashboardActivity";
+import NotificationCenter from "@/components/NotificationCenter";
 import { supabase } from "@/lib/supabase";
 import {
   isManagementRole,
@@ -34,20 +33,6 @@ type DashboardProps = {
 
 const BOMOBILE_URL = `${window.location.origin}/bomobile/`;
 
-function formatDate(value: string | null | undefined, options: Intl.DateTimeFormatOptions = {}) {
-  if (!value) return "Data não informada";
-  const normalized = value.includes("T") ? value : value.replace(" ", "T");
-  const date = new Date(normalized);
-  if (Number.isNaN(date.getTime())) return "Data não informada";
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    ...options,
-  }).format(date);
-}
-
 function notificationDestination(item: DashboardNotification) {
   const routeText = `${item.tipo ?? ""} ${item.link ?? ""}`.toLowerCase();
   const route = routeText.includes("ocorrencia") ? "ocorrencias" : "consulta";
@@ -59,89 +44,6 @@ function shortName(profile: PerfilFuncional) {
   return value.split(/\s+/)[0];
 }
 
-function NotificationPanel({
-  data,
-  busy,
-  error,
-  onClose,
-  onMarkAll,
-  onToggle,
-  onOpen,
-}: {
-  data: DashboardData | null;
-  busy: boolean;
-  error: string | null;
-  onClose: () => void;
-  onMarkAll: (isRead: boolean) => void;
-  onToggle: (item: DashboardNotification) => void;
-  onOpen: (item: DashboardNotification) => void;
-}) {
-  const notifications = data?.notifications ?? [];
-  return (
-    <section className="dashboard-notification-panel" role="dialog" aria-label="Notificações recentes">
-      <div className="dashboard-notification-panel-head">
-        <div>
-          <p className="dashboard-eyebrow">CENTRAL DE AVISOS</p>
-          <h2>Notificações</h2>
-        </div>
-        <button className="dashboard-icon-button" type="button" onClick={onClose} aria-label="Fechar notificações">
-          <X size={18} aria-hidden="true" />
-        </button>
-      </div>
-
-      <div className="dashboard-notification-tools">
-        <span>{data?.unreadCount ?? 0} não lida{data?.unreadCount === 1 ? "" : "s"}</span>
-        <div>
-          <button type="button" onClick={() => onMarkAll(true)} disabled={busy || (data?.unreadCount ?? 0) === 0}>
-            <CheckCheck size={14} aria-hidden="true" /> Todas lidas
-          </button>
-          <button type="button" onClick={() => onMarkAll(false)} disabled={busy || notifications.length === 0}>
-            Marcar não lidas
-          </button>
-        </div>
-      </div>
-
-      {error && <p className="dashboard-inline-error" role="alert">{error}</p>}
-      {busy && <p className="dashboard-panel-loading"><RefreshCw size={15} className="spin" /> Atualizando notificações...</p>}
-      {!busy && notifications.length === 0 && (
-        <div className="dashboard-empty-notifications">
-          <ShieldCheck size={23} aria-hidden="true" />
-          <strong>Nenhum aviso recente</strong>
-          <span>Quando houver uma nova ocorrência ou abordagem, ela aparecerá aqui.</span>
-        </div>
-      )}
-      {!busy && notifications.length > 0 && (
-        <ul className="dashboard-notification-list">
-          {notifications.map((item) => (
-            <li key={item.id} className={item.lida ? "is-read" : "is-unread"}>
-              <button className="dashboard-notification-open" type="button" onClick={() => onOpen(item)}>
-                <span className="dashboard-notification-indicator" aria-hidden="true" />
-                <span className="dashboard-notification-copy">
-                  <strong>{item.titulo}</strong>
-                  <span>{item.mensagem}</span>
-                  <small>{formatDate(item.criado_em)}</small>
-                </span>
-                <ArrowRight size={15} aria-hidden="true" />
-              </button>
-              <button
-                className="dashboard-notification-toggle"
-                type="button"
-                onClick={() => onToggle(item)}
-                aria-label={item.lida ? "Marcar notificação como não lida" : "Marcar notificação como lida"}
-              >
-                {item.lida ? "Não lida" : "Marcar lida"}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <a className="dashboard-notification-footer" href={`${BOMOBILE_URL}#notificacoes`}>
-        Abrir central completa no aplicativo <ArrowRight size={15} aria-hidden="true" />
-      </a>
-    </section>
-  );
-}
-
 export default function Dashboard({ profile, onSignOut, onProfileUpdated }: DashboardProps) {
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -151,7 +53,6 @@ export default function Dashboard({ profile, onSignOut, onProfileUpdated }: Dash
   const [actionError, setActionError] = useState<string | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
-  const notificationRef = useRef<HTMLDivElement>(null);
   const hasLoadedRef = useRef(false);
   const showTeamOverview = isManagementRole(profile.perfil);
 
@@ -186,24 +87,6 @@ export default function Dashboard({ profile, onSignOut, onProfileUpdated }: Dash
       window.removeEventListener("offline", onOffline);
     };
   }, []);
-
-  useEffect(() => {
-    if (!notificationsOpen) return;
-    const onPointerDown = (event: PointerEvent) => {
-      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
-        setNotificationsOpen(false);
-      }
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setNotificationsOpen(false);
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [notificationsOpen]);
 
   async function markAll(isRead: boolean) {
     setActionError(null);
@@ -246,6 +129,12 @@ export default function Dashboard({ profile, onSignOut, onProfileUpdated }: Dash
     }
   }
 
+  function openNotifications() {
+    setActionError(null);
+    setNotificationsOpen(true);
+    void refresh();
+  }
+
   const quickActions = [
     { title: "Consultar ocorrências", description: "Abrir a consulta operacional", icon: ClipboardList, route: "ocorrencias" },
     { title: "Consultar abordagens", description: "Pessoas e veículos", icon: Shield, route: "consulta" },
@@ -259,11 +148,11 @@ export default function Dashboard({ profile, onSignOut, onProfileUpdated }: Dash
           <span><strong>Guarda Municipal</strong><small>Pitangueiras — PR</small></span>
         </a>
         <div className="dashboard-topbar-actions">
-          <div className="dashboard-notification-anchor" ref={notificationRef}>
+          <div className="dashboard-notification-anchor">
             <button
               className={`dashboard-bell ${notificationsOpen ? "is-open" : ""}`}
               type="button"
-              onClick={() => setNotificationsOpen((open) => !open)}
+              onClick={() => (notificationsOpen ? setNotificationsOpen(false) : openNotifications())}
               aria-label={`Notificações: ${data?.unreadCount ?? 0} não lidas`}
               aria-expanded={notificationsOpen}
               aria-haspopup="dialog"
@@ -271,18 +160,7 @@ export default function Dashboard({ profile, onSignOut, onProfileUpdated }: Dash
               <Bell size={19} aria-hidden="true" />
               {(data?.unreadCount ?? 0) > 0 && <span className="dashboard-bell-count">{(data?.unreadCount ?? 0) > 99 ? "99+" : data?.unreadCount}</span>}
             </button>
-            {notificationsOpen && (
-              <NotificationPanel
-                data={data}
-                busy={isBusy}
-                error={actionError}
-                onClose={() => setNotificationsOpen(false)}
-                onMarkAll={markAll}
-                onToggle={toggleNotification}
-                onOpen={openNotification}
-              />
-              )}
-            </div>
+          </div>
           <div className="dashboard-user-presence" role="status" aria-label={`Modo ${isOnline ? "online" : "offline"}`}>
             <span className={`dashboard-user-avatar-wrap ${isOnline ? "is-online" : "is-offline"}`}>
               <ProfileAvatar className="dashboard-user-avatar" photoUrl={profile.foto_url} name={profile.apelido || profile.nome_completo} />
@@ -292,6 +170,20 @@ export default function Dashboard({ profile, onSignOut, onProfileUpdated }: Dash
           </div>
         </div>
       </header>
+
+      {notificationsOpen && (
+        <NotificationCenter
+          data={data}
+          loading={isLoading || isRefreshing}
+          busy={isBusy}
+          error={actionError}
+          onClose={() => setNotificationsOpen(false)}
+          onRefresh={() => void refresh()}
+          onMarkAll={markAll}
+          onToggle={toggleNotification}
+          onOpen={openNotification}
+        />
+      )}
 
       <div className="dashboard-content">
         <section className="dashboard-welcome">
@@ -364,7 +256,7 @@ export default function Dashboard({ profile, onSignOut, onProfileUpdated }: Dash
       <DashboardBottomNav
         profile={profile}
         onSignOut={onSignOut}
-        onOpenNotifications={() => setNotificationsOpen(true)}
+        onOpenNotifications={openNotifications}
         onProfileUpdated={onProfileUpdated}
       />
     </main>

@@ -27,3 +27,11 @@
 - [x] Exibir gravidade nos boletins e fase/situação nas abordagens, sem depender apenas da cor para comunicar o status.
 - [x] Manter GM criador e GM de apoio legíveis, em hierarquia visual secundária.
 - [x] Tornar o card inteiro acionável por toque e teclado para abrir os detalhes disponíveis, sem exibir dados pessoais desnecessários nem publicar links das fotos.
+
+## Central de Notificações responsiva — concluído
+- [x] Reutilizar uma única central ao abrir pelo sino do cabeçalho e por Mais → Notificações.
+- [x] No celular, apresentar a central como painel quase em tela cheia; no desktop, como painel lateral/modal responsivo.
+- [x] Exibir contador de não lidas, filtros Todas/Não lidas/Operacionais/Sistema e ação para marcar todas como lidas.
+- [x] Agrupar notificações por Hoje, Ontem, Esta semana e Anteriores, com ícones e cores por tipo.
+- [x] Permitir abrir a notificação, marcá-la automaticamente como lida e alternar individualmente o estado de leitura.
+- [x] Tratar carregamento, estado vazio, erro de conexão e atualização ao abrir/recuperar a conexão.
