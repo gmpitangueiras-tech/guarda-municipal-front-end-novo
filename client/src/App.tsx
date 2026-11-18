@@ -155,7 +155,7 @@ export default function App() {
   if (route.screen === "dashboard" && profile) {
     return (
       <Suspense fallback={<main className="session-boot" role="status" aria-live="polite"><h1>Preparando seu painel</h1><p>Carregando suas informações.</p></main>}>
-        <Dashboard profile={profile} onSignOut={handleSignOut} />
+        <Dashboard profile={profile} onSignOut={handleSignOut} onProfileUpdated={setProfile} />
       </Suspense>
     );
   }

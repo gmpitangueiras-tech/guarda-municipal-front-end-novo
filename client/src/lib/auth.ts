@@ -19,6 +19,12 @@ export type LoginResult =
   | { success: true; profile: PerfilFuncional; precisaPrimeiroAcesso: boolean }
   | { success: false; error: string; blocked?: boolean };
 
+export type ProfileUpdateInput = {
+  apelido: string;
+  email: string;
+  telefone: string;
+};
+
 type LegacyLoginPayload = {
   success?: boolean;
   error?: string;
@@ -231,6 +237,50 @@ export async function setNewPassword(password: string): Promise<{ success: boole
 
 export async function signOut(): Promise<void> {
   if (supabase) await supabase.auth.signOut({ scope: "local" });
+}
+
+/** Atualiza apenas os dados de contato e o nome de guerra do próprio GM. */
+export async function updateMyProfile(
+  profileId: string,
+  input: ProfileUpdateInput,
+): Promise<{ success: true; profile: PerfilFuncional; emailConfirmationPending: boolean } | { success: false; error: string }> {
+  if (!supabase) return { success: false, error: "Serviço de perfil indisponível." };
+
+  const apelido = input.apelido.trim().slice(0, 80);
+  const email = input.email.trim().toLowerCase();
+  const telefone = input.telefone.trim().slice(0, 30);
+  if (apelido.length > 0 && apelido.length < 2) return { success: false, error: "O nome de guerra precisa ter pelo menos 2 caracteres." };
+  if (!/^[^@\s]+@[^@\s.]+\.[^@\s]+$/.test(email) || email.length > 160) {
+    return { success: false, error: "Informe um e-mail válido." };
+  }
+
+  const { data: currentUser } = await supabase.auth.getUser();
+  let emailConfirmationPending = false;
+  if (currentUser.user?.email && currentUser.user.email.toLowerCase() !== email) {
+    const { error } = await supabase.auth.updateUser({ email });
+    if (error) {
+      if (/already registered|already exists|duplicate/i.test(error.message)) {
+        return { success: false, error: "Este e-mail já está vinculado a outra conta." };
+      }
+      return { success: false, error: "Não foi possível solicitar a alteração do e-mail." };
+    }
+    emailConfirmationPending = true;
+  }
+
+  const { data, error } = await supabase
+    .from("usuarios")
+    .update({ apelido: apelido || null, email, telefone: telefone || null })
+    .eq("id", profileId)
+    .select("id,nome_completo,matricula,apelido,email,telefone,perfil,status,primeiro_acesso,senha_personalizada,foto_url")
+    .single();
+
+  if (error || !data) {
+    return { success: false, error: "Não foi possível salvar seu perfil. Confira a conexão e tente novamente." };
+  }
+
+  const profile = toProfile(data as Partial<PerfilFuncional>);
+  if (!profile) return { success: false, error: "O perfil salvo retornou dados incompletos." };
+  return { success: true, profile, emailConfirmationPending };
 }
 
 /** Recupera o perfil funcional ligado à sessão Supabase atual. */
