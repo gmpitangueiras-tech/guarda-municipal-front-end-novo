@@ -72,7 +72,6 @@ type OccurrenceTeamRow = {
   ocorrencia_id: string;
   guarda_id: string;
   papel: string;
-  nome_snapshot: string | null;
   ordem: number | null;
 };
 
@@ -223,13 +222,18 @@ async function getOccurrenceTeamLinks(ids: string[]): Promise<OccurrenceTeamRow[
   if (!supabase || ids.length === 0) return [];
   const { data, error } = await supabase
     .from("ocorrencia_guardas")
-    .select("ocorrencia_id,guarda_id,papel,nome_snapshot,ordem")
+    .select("ocorrencia_id,guarda_id,papel,ordem")
     .in("ocorrencia_id", ids)
     .eq("esta_ativo", true)
     .order("ordem", { ascending: true, nullsFirst: false })
     .limit(Math.max(ids.length * 10, 1));
   if (error) return [];
   return (data ?? []) as OccurrenceTeamRow[];
+}
+
+function formatOfficerCallsign(value: string | null | undefined): string | null {
+  const nickname = value?.trim().replace(/\s+/g, " ").replace(/^GM(?:\s+|$)/i, "").trim();
+  return nickname ? `GM ${nickname}` : null;
 }
 
 async function getOfficerDirectory(ids: Array<string | null | undefined>): Promise<Map<string, OfficerNameRow>> {
@@ -239,14 +243,14 @@ async function getOfficerDirectory(ids: Array<string | null | undefined>): Promi
 
   const { data, error } = await supabase
     .from("usuarios")
-    .select("id,apelido,nome_completo")
+    .select("id,apelido")
     .in("id", uniqueIds)
     .limit(uniqueIds.length);
   if (error) return new Map();
 
   return new Map((data ?? []).map((row) => [row.id, {
     id: row.id,
-    displayName: row.apelido?.trim() || row.nome_completo?.trim() || null,
+    displayName: formatOfficerCallsign(row.apelido),
   }]));
 }
 
@@ -422,8 +426,6 @@ export async function loadDashboardData(profileId: string, profileRole: string |
   ];
   const officerDirectory = await getOfficerDirectory(officerIds);
   const displayOfficer = (id: string | null) => (id ? officerDirectory.get(id)?.displayName ?? null : null);
-  const displaySupport = (id: string | null, snapshot: string | null) =>
-    displayOfficer(id) || snapshot?.trim() || null;
 
   const occurrences: OccurrencePreview[] = rawOccurrences.map((row) => {
     const team = teamByOccurrence.get(row.id) ?? [];
@@ -443,7 +445,7 @@ export async function loadDashboardData(profileId: string, profileRole: string |
       cancelado_em: row.cancelado_em,
       photo: occurrencePhotos.get(row.id) ?? null,
       creatorName: displayOfficer(row.criado_por),
-      supportName: support ? displaySupport(support.guarda_id, support.nome_snapshot) : null,
+      supportName: support ? displayOfficer(support.guarda_id) : null,
       supportAssigned: Boolean(support),
     };
   });

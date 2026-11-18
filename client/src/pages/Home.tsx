@@ -1,4 +1,5 @@
-import { FormEvent, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { createPortal } from "react-dom";
 import {
   AlertCircle,
   ArrowRight,
@@ -31,6 +32,21 @@ export default function Home({ notice, onLoginSuccess, onFirstAccess, onResetReq
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(notice ? { type: "success", message: notice } : null);
+  const progressDialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isLoading) return;
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const frame = window.requestAnimationFrame(() => progressDialogRef.current?.focus());
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.body.style.overflow = previousOverflow;
+      if (previouslyFocused?.isConnected) previouslyFocused.focus({ preventScroll: true });
+    };
+  }, [isLoading]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -67,6 +83,12 @@ export default function Home({ notice, onLoginSuccess, onFirstAccess, onResetReq
     } finally {
       setIsLoading(false);
     }
+  }
+
+  function keepProgressFocus(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Tab") return;
+    event.preventDefault();
+    progressDialogRef.current?.focus();
   }
 
   function handleForgotPassword() {
@@ -156,6 +178,7 @@ export default function Home({ notice, onLoginSuccess, onFirstAccess, onResetReq
                 <button
                   className="text-button"
                   type="button"
+                  disabled={isLoading}
                   onClick={handleForgotPassword}
                 >
                   Redefinir senha
@@ -191,21 +214,6 @@ export default function Home({ notice, onLoginSuccess, onFirstAccess, onResetReq
               </span>
             </div>
 
-            {isLoading && (
-              <div className="login-waiting" role="status" aria-live="polite" aria-atomic="true">
-                <div className="login-waiting-emblem" aria-hidden="true">
-                  <img src={brasaoGuarda} alt="" />
-                  <span className="login-waiting-ring" />
-                </div>
-                <div className="login-waiting-copy">
-                  <strong>Aguardando validação do login</strong>
-                  <span>Estamos conferindo seu acesso com segurança.</span>
-                </div>
-                <div className="login-waiting-track" aria-hidden="true"><span /></div>
-                <small>Isso pode levar alguns instantes. Não feche esta página.</small>
-              </div>
-            )}
-
             {feedback && !isLoading && (
               <div
                 className={`form-feedback ${feedback.type}`}
@@ -233,6 +241,36 @@ export default function Home({ notice, onLoginSuccess, onFirstAccess, onResetReq
           Seus dados são protegidos e utilizados apenas para atendimento.
         </p>
       </section>
+
+      {isLoading && createPortal(
+        <div className="login-waiting-overlay login-theme-blue">
+          <div
+            ref={progressDialogRef}
+            className="login-waiting-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="login-progress-title"
+            aria-describedby="login-progress-description"
+            aria-busy="true"
+            tabIndex={-1}
+            onKeyDown={keepProgressFocus}
+          >
+            <div className="login-waiting" role="status" aria-live="polite" aria-atomic="true">
+              <div className="login-waiting-emblem" aria-hidden="true">
+                <img src={brasaoGuarda} alt="" />
+                <span className="login-waiting-ring" />
+              </div>
+              <div className="login-waiting-copy">
+                <strong id="login-progress-title">Aguardando validação do login</strong>
+                <span id="login-progress-description">Estamos conferindo seu acesso com segurança.</span>
+              </div>
+              <div className="login-waiting-track" aria-hidden="true"><span /></div>
+              <small>Isso pode levar alguns instantes. Aguarde sem fechar esta página.</small>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
     </main>
   );
 }

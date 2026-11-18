@@ -12,3 +12,10 @@
 ## Privacidade das fotos dos cartões — concluído
 - [x] Manter os anexos no bucket privado e não transformar os caminhos armazenados em links públicos.
 - [x] Carregar a miniatura com a sessão autenticada e usar somente uma URL local temporária no navegador.
+
+## Modal de validação do login — concluído
+- [x] Mostrar a animação de login como um modal enquanto o backend valida o acesso.
+- [x] Deixar o restante da tela opaco/atenuado para dar destaque à animação e informar ao usuário o que está acontecendo.
+
+## Nome de guerra nos cartões do dashboard — concluído
+- [x] Nos cartões de “Últimas Ocorrências”, “Últimas Abordagens de Pessoas” e “Últimas Abordagens de Veículos”, apresentar o GM que criou e o GM que apoiou no formato “GM” + apelido cadastrado pelo guarda.
