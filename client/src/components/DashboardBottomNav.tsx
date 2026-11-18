@@ -27,6 +27,7 @@ import ProfileAvatar from "@/components/ProfileAvatar";
 
 type Sheet = "create" | "more" | "profile" | null;
 type ContactField = "email" | "telefone";
+type ActivePage = "inicio" | "ocorrencias";
 
 const BOMOBILE_URL = `${window.location.origin}/bomobile/`;
 
@@ -58,11 +59,13 @@ function maskPhone(value: string | null) {
 
 export default function DashboardBottomNav({
   profile,
+  activePage,
   onSignOut,
   onOpenNotifications,
   onProfileUpdated,
 }: {
   profile: PerfilFuncional;
+  activePage: ActivePage;
   onSignOut: () => Promise<void>;
   onOpenNotifications: () => void;
   onProfileUpdated: (profile: PerfilFuncional) => void;
@@ -96,6 +99,12 @@ export default function DashboardBottomNav({
       window.removeEventListener("offline", onOffline);
     };
   }, [sheet]);
+
+  useEffect(() => {
+    const closeOnNavigation = () => setSheet(null);
+    window.addEventListener("hashchange", closeOnNavigation);
+    return () => window.removeEventListener("hashchange", closeOnNavigation);
+  }, []);
 
   useEffect(() => {
     if (!editing) {
@@ -159,11 +168,11 @@ export default function DashboardBottomNav({
   return (
     <>
       <nav className="dashboard-bottom-nav" aria-label="Navegação principal">
-        <a className="dashboard-nav-item is-current" href="#/inicio" aria-current="page">
+        <a className={`dashboard-nav-item${activePage === "inicio" ? " is-current" : ""}`} href="#/inicio" aria-current={activePage === "inicio" ? "page" : undefined}>
           <House size={19} aria-hidden="true" />
           <span>Início</span>
         </a>
-        <a className="dashboard-nav-item" href="#/ocorrencias">
+        <a className={`dashboard-nav-item${activePage === "ocorrencias" ? " is-current" : ""}`} href="#/ocorrencias" aria-current={activePage === "ocorrencias" ? "page" : undefined}>
           <ClipboardList size={19} aria-hidden="true" />
           <span>Ocorrências</span>
         </a>
@@ -200,7 +209,7 @@ export default function DashboardBottomNav({
               <>
                 <div className="dashboard-record-support-note" role="note"><span><Shield size={18} aria-hidden="true" /></span><span><strong>GM de apoio obrigatório</strong><small>Indique outro GM ativo. O sistema bloqueia abordagens sem esse vínculo e não sincroniza boletins sem equipe.</small></span></div>
                 <div className="dashboard-menu-options">
-                  <a className="dashboard-menu-option" href={`${BOMOBILE_URL}#nova-ocorrencia`}><span className="dashboard-menu-option-icon is-gold"><FilePlus2 size={20} aria-hidden="true" /></span><span><strong>Boletim de ocorrência</strong><small>Inclua outro GM como apoio antes de sincronizar.</small></span><ArrowRight size={17} aria-hidden="true" /></a>
+                  <a className="dashboard-menu-option" href="#/ocorrencias/nova"><span className="dashboard-menu-option-icon is-gold"><FilePlus2 size={20} aria-hidden="true" /></span><span><strong>Boletim de ocorrência</strong><small>Registre o BO no novo formulário, com GM responsável e apoio.</small></span><ArrowRight size={17} aria-hidden="true" /></a>
                   <a className="dashboard-menu-option" href={`${BOMOBILE_URL}#consulta`}><span className="dashboard-menu-option-icon"><UserRound size={20} aria-hidden="true" /></span><span><strong>Abordagem de pessoa</strong><small>Na tela operacional, escolha Pessoa e indique o GM de apoio.</small></span><ArrowRight size={17} aria-hidden="true" /></a>
                   <a className="dashboard-menu-option" href={`${BOMOBILE_URL}#consulta`}><span className="dashboard-menu-option-icon"><CarFront size={20} aria-hidden="true" /></span><span><strong>Abordagem de veículo</strong><small>Na tela operacional, escolha Veículo e indique o GM de apoio.</small></span><ArrowRight size={17} aria-hidden="true" /></a>
                 </div>

@@ -40,7 +40,6 @@ import {
   type GravidadeSlug,
   type OfficerOption,
 } from "@/lib/ocorrencias";
-import brasaoGuarda from "@/assets/brasao-guarda-pitangueiras.png";
 
 /**
  * Registro nativo de BO.
@@ -513,28 +512,6 @@ export default function OcorrenciaNova({ profile }: { profile: PerfilFuncional }
 
   return (
     <main className="occurrences-shell occurrence-new">
-      <header className="occurrences-topbar">
-        <a className="occurrences-back" href={enderecoDeVolta}>
-          <ArrowLeft size={18} aria-hidden="true" />
-          <span>Ocorrências</span>
-        </a>
-        <a className="occurrences-brand" href="#/inicio" aria-label="Guarda Municipal de Pitangueiras, início">
-          <img src={brasaoGuarda} alt="" />
-          <span>
-            <strong>Guarda Municipal</strong>
-            <small>Pitangueiras · PR</small>
-          </span>
-        </a>
-        <div
-          className={`occurrences-connectivity ${online ? "is-online" : "is-offline"}`}
-          role="status"
-          aria-label={online ? "Você está online" : "Você está offline"}
-        >
-          {online ? <Wifi size={16} aria-hidden="true" /> : <WifiOff size={16} aria-hidden="true" />}
-          <span>{online ? "Online" : "Offline"}</span>
-        </div>
-      </header>
-
       <div className="occurrences-content">
         <section className="occurrences-hero" aria-labelledby="ocorrencia-nova-title">
           <div className="occurrences-hero-copy">

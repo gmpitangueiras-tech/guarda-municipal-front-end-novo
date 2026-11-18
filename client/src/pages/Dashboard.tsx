@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
-  Bell,
   CircleAlert,
   ClipboardList,
   RefreshCw,
@@ -10,10 +9,8 @@ import {
   UserRound,
 } from "lucide-react";
 import type { PerfilFuncional } from "@/lib/auth";
-import DashboardBottomNav from "@/components/DashboardBottomNav";
 import DashboardActivity from "@/components/DashboardActivity";
 import NotificationCenter from "@/components/NotificationCenter";
-import { supabase } from "@/lib/supabase";
 import {
   isManagementRole,
   loadDashboardData,
@@ -22,13 +19,10 @@ import {
   type DashboardData,
   type DashboardNotification,
 } from "@/lib/dashboard";
-import brasaoGuarda from "@/assets/brasao-guarda-pitangueiras.png";
-import ProfileAvatar from "@/components/ProfileAvatar";
 
 type DashboardProps = {
   profile: PerfilFuncional;
-  onSignOut: () => Promise<void>;
-  onProfileUpdated: (profile: PerfilFuncional) => void;
+  onUnreadCountChange: (count: number) => void;
 };
 
 const BOMOBILE_URL = `${window.location.origin}/bomobile/`;
@@ -44,7 +38,7 @@ function shortName(profile: PerfilFuncional) {
   return value.split(/\s+/)[0];
 }
 
-export default function Dashboard({ profile, onSignOut, onProfileUpdated }: DashboardProps) {
+export default function Dashboard({ profile, onUnreadCountChange }: DashboardProps) {
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -52,7 +46,6 @@ export default function Dashboard({ profile, onSignOut, onProfileUpdated }: Dash
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const hasLoadedRef = useRef(false);
   const showTeamOverview = isManagementRole(profile.perfil);
 
@@ -78,15 +71,8 @@ export default function Dashboard({ profile, onSignOut, onProfileUpdated }: Dash
   }, [refresh]);
 
   useEffect(() => {
-    const onOnline = () => setIsOnline(true);
-    const onOffline = () => setIsOnline(false);
-    window.addEventListener("online", onOnline);
-    window.addEventListener("offline", onOffline);
-    return () => {
-      window.removeEventListener("online", onOnline);
-      window.removeEventListener("offline", onOffline);
-    };
-  }, []);
+    if (data) onUnreadCountChange(data.unreadCount);
+  }, [data, onUnreadCountChange]);
 
   async function markAll(isRead: boolean) {
     setActionError(null);
@@ -129,11 +115,28 @@ export default function Dashboard({ profile, onSignOut, onProfileUpdated }: Dash
     }
   }
 
-  function openNotifications() {
+  const openNotifications = useCallback(() => {
     setActionError(null);
     setNotificationsOpen(true);
     void refresh();
-  }
+  }, [refresh]);
+
+  useEffect(() => {
+    const handleOpenRequest = () => openNotifications();
+    const handleHashChange = () => {
+      const query = window.location.hash.split("?")[1] ?? "";
+      if (new URLSearchParams(query).get("abrir") !== "notificacoes") return;
+      openNotifications();
+      window.history.replaceState(null, "", `${window.location.pathname}#/inicio`);
+    };
+    window.addEventListener("gm:open-notifications", handleOpenRequest);
+    window.addEventListener("hashchange", handleHashChange);
+    handleHashChange();
+    return () => {
+      window.removeEventListener("gm:open-notifications", handleOpenRequest);
+      window.removeEventListener("hashchange", handleHashChange);
+    };
+  }, [openNotifications]);
 
   const quickActions = [
     { title: "Consultar ocorrências", description: "Abrir a consulta operacional", icon: ClipboardList, route: "ocorrencias" },
@@ -141,36 +144,7 @@ export default function Dashboard({ profile, onSignOut, onProfileUpdated }: Dash
   ];
 
   return (
-    <main className="dashboard-shell dashboard-theme-blue">
-      <header className="dashboard-topbar">
-        <a className="dashboard-brand" href="#/inicio" aria-label="Início da Guarda Municipal">
-          <span className="dashboard-brand-mark"><img src={brasaoGuarda} alt="" /></span>
-          <span><strong>Guarda Municipal</strong><small>Pitangueiras — PR</small></span>
-        </a>
-        <div className="dashboard-topbar-actions">
-          <div className="dashboard-notification-anchor">
-            <button
-              className={`dashboard-bell ${notificationsOpen ? "is-open" : ""}`}
-              type="button"
-              onClick={() => (notificationsOpen ? setNotificationsOpen(false) : openNotifications())}
-              aria-label={`Notificações: ${data?.unreadCount ?? 0} não lidas`}
-              aria-expanded={notificationsOpen}
-              aria-haspopup="dialog"
-            >
-              <Bell size={19} aria-hidden="true" />
-              {(data?.unreadCount ?? 0) > 0 && <span className="dashboard-bell-count">{(data?.unreadCount ?? 0) > 99 ? "99+" : data?.unreadCount}</span>}
-            </button>
-          </div>
-          <div className="dashboard-user-presence" role="status" aria-label={`Modo ${isOnline ? "online" : "offline"}`}>
-            <span className={`dashboard-user-avatar-wrap ${isOnline ? "is-online" : "is-offline"}`}>
-              <ProfileAvatar className="dashboard-user-avatar" photoUrl={profile.foto_url} name={profile.apelido || profile.nome_completo} />
-              <i className="dashboard-user-presence-dot" aria-hidden="true" />
-            </span>
-            <span className="dashboard-user-presence-label">{isOnline ? "Online" : "Offline"}</span>
-          </div>
-        </div>
-      </header>
-
+    <>
       {notificationsOpen && (
         <NotificationCenter
           data={data}
@@ -185,7 +159,7 @@ export default function Dashboard({ profile, onSignOut, onProfileUpdated }: Dash
         />
       )}
 
-      <div className="dashboard-content">
+      <main className="dashboard-content">
         <section className="dashboard-welcome">
           <div>
             <p className="dashboard-eyebrow">{showTeamOverview ? "PAINEL DA EQUIPE" : "PAINEL INDIVIDUAL"} · {new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "numeric", month: "short" }).format(new Date())}</p>
@@ -252,13 +226,7 @@ export default function Dashboard({ profile, onSignOut, onProfileUpdated }: Dash
             : "Área individual · Até seis ocorrências e abordagens criadas por você ou com sua participação."}</span>
           <a href={`${BOMOBILE_URL}#notificacoes`}>Central de notificações</a>
         </footer>
-      </div>
-      <DashboardBottomNav
-        profile={profile}
-        onSignOut={onSignOut}
-        onOpenNotifications={openNotifications}
-        onProfileUpdated={onProfileUpdated}
-      />
-    </main>
+      </main>
+    </>
   );
 }

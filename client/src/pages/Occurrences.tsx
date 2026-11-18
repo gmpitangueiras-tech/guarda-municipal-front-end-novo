@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  ArrowLeft,
   ArrowRight,
   CalendarDays,
   Check,
@@ -58,7 +57,6 @@ import {
   type SituacaoOcorrencia,
   type TotaisOcorrencias,
 } from "@/lib/ocorrencias";
-import brasaoGuarda from "@/assets/brasao-guarda-pitangueiras.png";
 
 const PAGINA_INICIAL = 0;
 const ESQUELETO = [0, 1, 2, 3];
@@ -244,11 +242,16 @@ function KpiCard({
       onClick={onClick}
       aria-pressed={ativo}
     >
+      <span className="occurrence-stat-head">
+        <span className="occurrence-stat-label">{cartao.rotulo}</span>
+        <span className="occurrence-stat-icon" aria-hidden="true">
+          {cartao.tom === "incompleto" ? <CircleAlert size={18} /> : cartao.tom === "concluido" ? <Check size={18} /> : <Clock size={18} />}
+        </span>
+      </span>
       <span className="occurrence-stat-value">{cartao.valor}</span>
-      <span className="occurrence-stat-label">{cartao.rotulo}</span>
       {cartao.nota ? <span className="occurrence-stat-note">{cartao.nota}</span> : null}
       <span className="occurrence-stat-go">
-        Abrir <ArrowRight size={14} aria-hidden="true" />
+        Ver registros <ArrowRight size={14} aria-hidden="true" />
       </span>
     </button>
   );
@@ -257,8 +260,11 @@ function KpiCard({
 function KpiEstatico({ cartao }: { cartao: CartaoIndicador }) {
   return (
     <div className={`occurrence-stat is-${cartao.tom} is-static`}>
+      <span className="occurrence-stat-head">
+        <span className="occurrence-stat-label">{cartao.rotulo}</span>
+        <span className="occurrence-stat-icon" aria-hidden="true"><Clock size={18} /></span>
+      </span>
       <span className="occurrence-stat-value">{cartao.valor}</span>
-      <span className="occurrence-stat-label">{cartao.rotulo}</span>
       {cartao.nota ? <span className="occurrence-stat-note">{cartao.nota}</span> : null}
     </div>
   );
@@ -1135,35 +1141,6 @@ export default function Occurrences({ profile }: { profile: PerfilFuncional }) {
 
   return (
     <main className="occurrences-shell">
-      <header className="occurrences-topbar">
-        <button
-          className="occurrences-back"
-          type="button"
-          onClick={() => {
-            window.location.hash = "#/inicio";
-          }}
-          aria-label="Voltar ao painel"
-        >
-          <ArrowLeft size={18} aria-hidden="true" />
-          <span>Painel</span>
-        </button>
-        <a className="occurrences-brand" href="#/inicio" aria-label="Guarda Municipal de Pitangueiras, início">
-          <img src={brasaoGuarda} alt="" />
-          <span>
-            <strong>Guarda Municipal</strong>
-            <small>Pitangueiras · PR</small>
-          </span>
-        </a>
-        <div
-          className={`occurrences-connectivity ${isOnline ? "is-online" : "is-offline"}`}
-          role="status"
-          aria-label={isOnline ? "Você está online" : "Você está offline"}
-        >
-          {isOnline ? <Wifi size={16} aria-hidden="true" /> : <WifiOff size={16} aria-hidden="true" />}
-          <span>{isOnline ? "Online" : "Offline"}</span>
-        </div>
-      </header>
-
       <div className="occurrences-content">
         <section className="occurrences-hero" aria-labelledby="occurrences-title">
           <div className="occurrences-hero-copy">

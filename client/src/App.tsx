@@ -6,6 +6,7 @@ import ResetRequest from "./pages/ResetRequest";
 import { getAuthenticatedProfile, signOut, type PerfilFuncional } from "./lib/auth";
 import { supabase } from "./lib/supabase";
 import brasaoGuarda from "./assets/brasao-guarda-pitangueiras.png";
+import AuthenticatedAppShell from "@/components/AuthenticatedAppShell";
 
 type Screen =
   | "login"
@@ -50,6 +51,7 @@ export default function App() {
   const [route, setRoute] = useState<Route>(() => readRoute());
   const [profileSeed, setProfileSeed] = useState<ProfileSeed>({});
   const [profile, setProfile] = useState<PerfilFuncional | null>(null);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState<number | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
 
@@ -123,6 +125,7 @@ export default function App() {
   async function handleSignOut() {
     await signOut();
     setProfile(null);
+    setUnreadNotificationCount(null);
     setNotice("Você saiu do sistema com segurança.");
     goTo("login");
   }
@@ -171,27 +174,32 @@ export default function App() {
     );
   }
 
-  if (route.screen === "dashboard" && profile) {
-    return (
-      <Suspense fallback={<main className="session-boot" role="status" aria-live="polite"><h1>Preparando seu painel</h1><p>Carregando suas informações.</p></main>}>
-        <Dashboard profile={profile} onSignOut={handleSignOut} onProfileUpdated={setProfile} />
-      </Suspense>
-    );
-  }
+  if (profile && (route.screen === "dashboard" || route.screen === "occurrences" || route.screen === "occurrence-new")) {
+    const activePage = route.screen === "dashboard" ? "inicio" : "ocorrencias";
+    const fallback = route.screen === "dashboard"
+      ? "Preparando seu painel"
+      : route.screen === "occurrences"
+        ? "Preparando ocorrências"
+        : "Preparando registro";
 
-  if (route.screen === "occurrences" && profile) {
     return (
-      <Suspense fallback={<main className="session-boot" role="status" aria-live="polite"><h1>Preparando ocorrências</h1><p>Carregando a lista operacional.</p></main>}>
-        <Occurrences profile={profile} />
-      </Suspense>
-    );
-  }
-
-  if (route.screen === "occurrence-new" && profile) {
-    return (
-      <Suspense fallback={<main className="session-boot" role="status" aria-live="polite"><h1>Preparando registro</h1><p>Carregando o formulário de ocorrência.</p></main>}>
-        <OcorrenciaNova profile={profile} />
-      </Suspense>
+      <AuthenticatedAppShell
+        profile={profile}
+        activePage={activePage}
+        unreadCount={unreadNotificationCount}
+        onSignOut={handleSignOut}
+        onProfileUpdated={setProfile}
+      >
+        <Suspense fallback={<main className="session-boot" role="status" aria-live="polite"><h1>{fallback}</h1><p>Carregando suas informações.</p></main>}>
+          {route.screen === "dashboard" ? (
+            <Dashboard profile={profile} onUnreadCountChange={setUnreadNotificationCount} />
+          ) : route.screen === "occurrences" ? (
+            <Occurrences profile={profile} />
+          ) : (
+            <OcorrenciaNova profile={profile} />
+          )}
+        </Suspense>
+      </AuthenticatedAppShell>
     );
   }
 
@@ -200,6 +208,7 @@ export default function App() {
       notice={notice}
       onLoginSuccess={(nextProfile) => {
         setProfile(nextProfile);
+        setUnreadNotificationCount(null);
         setNotice(null);
         goTo("dashboard", "#/inicio");
       }}
