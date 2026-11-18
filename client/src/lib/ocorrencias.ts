@@ -490,11 +490,11 @@ export const TIPOS_REGISTRO: Array<{ valor: string; rotulo: string }> = [
   { valor: "atendimento_social", rotulo: "Atendimento social" },
   { valor: "abandono_de_animal", rotulo: "Abandono de animal" },
   { valor: "morte", rotulo: "Morte" },
-  { valor: "atencao_local", rotulo: "Atencao Local" },
-  { valor: "vigilancia_local", rotulo: "Vigilancia Local" },
-  { valor: "apoio_a_autoridade", rotulo: "Apoio A Autoridade" },
-  { valor: "autoridade_presente", rotulo: "Autoridade Presente" },
-  { valor: "aparecimento_objeto", rotulo: "Aparecimento Objeto" },
+  { valor: "atencao_local", rotulo: "Atenção local" },
+  { valor: "vigilancia_local", rotulo: "Vigilância local" },
+  { valor: "apoio_a_autoridade", rotulo: "Apoio à autoridade" },
+  { valor: "autoridade_presente", rotulo: "Autoridade presente" },
+  { valor: "aparecimento_objeto", rotulo: "Aparecimento de objeto" },
   { valor: "outro", rotulo: "Outro (não classificado)" },
 ];
 

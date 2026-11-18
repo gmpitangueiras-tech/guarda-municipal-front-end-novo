@@ -988,7 +988,7 @@ export default function OcorrenciaNova({ profile }: { profile: PerfilFuncional }
           {errosDaEtapa.length && !erroServidor ? (
             <div className="occurrences-error" role="alert">
               <CircleAlert size={17} aria-hidden="true" />
-              <span>{errosDaEtapa[0]}</span>
+              <span>Verifique os campos destacados antes de continuar.</span>
             </div>
           ) : null}
 

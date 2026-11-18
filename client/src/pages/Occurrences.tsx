@@ -1061,12 +1061,19 @@ export default function Occurrences({ profile }: { profile: PerfilFuncional }) {
     if (!agrupamentos.length) return [];
     const usados = new Set<string>();
     const lista = agrupamentos.map((grupo) => {
+      const mesAno = grupo.chave.match(/^(\d{4})-(\d{2})$/);
+      const nomeMes = mesAno
+        ? new Intl.DateTimeFormat("pt-BR", { month: "long", timeZone: "UTC" }).format(
+            new Date(Date.UTC(Number(mesAno[1]), Number(mesAno[2]) - 1, 1)),
+          )
+        : null;
+      const titulo = nomeMes ? `${nomeMes[0].toLocaleUpperCase("pt-BR")}${nomeMes.slice(1)} de ${mesAno![1]}` : grupo.titulo;
       const itensGrupo = itens.filter((item) => {
         if (usados.has(item.id)) return false;
         return chaveDeAgrupamento(item.data_hora_inicio || item.criado_em) === grupo.chave;
       });
       itensGrupo.forEach((item) => usados.add(item.id));
-      return { chave: grupo.chave, titulo: grupo.titulo, quantidade: grupo.quantidade, itens: itensGrupo };
+      return { chave: grupo.chave, titulo, quantidade: grupo.quantidade, itens: itensGrupo };
     });
     const restante = itens.filter((item) => !usados.has(item.id));
     if (restante.length) lista.push({ chave: "demais", titulo: "Demais registros", quantidade: restante.length, itens: restante });
