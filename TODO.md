@@ -19,3 +19,11 @@
 
 ## Nome de guerra nos cartões do dashboard — concluído
 - [x] Nos cartões de “Últimas Ocorrências”, “Últimas Abordagens de Pessoas” e “Últimas Abordagens de Veículos”, apresentar o GM que criou e o GM que apoiou no formato “GM” + apelido cadastrado pelo guarda.
+
+## Refinamento visual e abertura dos detalhes dos cards — concluído
+- [x] Nos cards das três abas, destacar o tipo do registro com capitalização natural; nos boletins, apresentar também o número e um selo textual de status.
+- [x] Manter a miniatura da primeira foto anexada; quando não houver foto, mostrar um placeholder visual consistente.
+- [x] Organizar localização e data/hora para leitura rápida, truncando endereços longos sem perder a informação principal.
+- [x] Exibir gravidade nos boletins e fase/situação nas abordagens, sem depender apenas da cor para comunicar o status.
+- [x] Manter GM criador e GM de apoio legíveis, em hierarquia visual secundária.
+- [x] Tornar o card inteiro acionável por toque e teclado para abrir os detalhes disponíveis, sem exibir dados pessoais desnecessários nem publicar links das fotos.

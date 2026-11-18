@@ -5,13 +5,14 @@ import { supabase } from "@/lib/supabase";
 type PrivateRecordThumbnailProps = {
   photo: PrivateImageReference | null;
   fallback: ReactNode;
+  size?: "card" | "detail";
 };
 
 /**
  * Loads the private object with the signed-in Supabase session. The stored database URL is
  * never assigned to an image element; only a temporary browser-local blob URL is rendered.
  */
-export default function PrivateRecordThumbnail({ photo, fallback }: PrivateRecordThumbnailProps) {
+export default function PrivateRecordThumbnail({ photo, fallback, size = "card" }: PrivateRecordThumbnailProps) {
   const [source, setSource] = useState<string | null>(null);
   const activeObjectUrl = useRef<string | null>(null);
 
@@ -50,7 +51,7 @@ export default function PrivateRecordThumbnail({ photo, fallback }: PrivateRecor
   }
 
   return (
-    <span className="dashboard-record-artwork" aria-hidden="true">
+    <span className={`dashboard-record-artwork${size === "detail" ? " is-detail" : ""}`} aria-hidden="true">
       {source ? (
         <img
           className="dashboard-record-photo"

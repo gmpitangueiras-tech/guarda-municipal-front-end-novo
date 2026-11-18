@@ -1,14 +1,17 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { createPortal } from "react-dom";
 import {
   Activity,
   ArrowRight,
   CarFront,
+  ChevronRight,
   CircleAlert,
   ClipboardList,
   MapPin,
   RefreshCw,
   UserRound,
   UsersRound,
+  X,
 } from "lucide-react";
 import type { ApproachPreview, DashboardData, OccurrencePreview, PrivateImageReference } from "@/lib/dashboard";
 import { isManagementRole } from "@/lib/dashboard";
@@ -29,6 +32,10 @@ type RecordTab = {
   actionLabel: string;
 };
 
+type SelectedRecord =
+  | { kind: "occurrence"; item: OccurrencePreview }
+  | { kind: "approach"; item: ApproachPreview };
+
 function formatDate(value: string | null | undefined) {
   if (!value) return "Data não informada";
   const normalized = value.includes("T") ? value : value.replace(" ", "T");
@@ -36,7 +43,8 @@ function formatDate(value: string | null | undefined) {
   if (Number.isNaN(date.getTime())) return "Data não informada";
   return new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
-    month: "short",
+    month: "2-digit",
+    year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
@@ -75,7 +83,7 @@ function statusTone(value: string | null | undefined) {
 }
 
 function occurrenceNumber(item: OccurrencePreview) {
-  return item.numero_ocorrencia || item.numero_temporario || "Número não informado";
+  return item.numero_ocorrencia?.trim() || item.numero_temporario?.trim() || null;
 }
 
 function occurrenceStatus(item: OccurrencePreview) {
@@ -84,11 +92,15 @@ function occurrenceStatus(item: OccurrencePreview) {
 }
 
 function readableRecordType(value: string | null | undefined, fallback: string) {
-  const normalized = value?.trim().replaceAll("_", " ").replace(/\s+/g, " ");
-  if (!normalized) return fallback;
-  return normalized.toLocaleLowerCase("pt-BR").replace(/(^|[\s-])(\p{L})/gu, (_match, separator: string, letter: string) =>
-    `${separator}${letter.toLocaleUpperCase("pt-BR")}`,
-  );
+  const source = value?.trim().replaceAll("_", " ").replace(/\s+/g, " ");
+  if (!source) return fallback;
+  const lower = source.toLocaleLowerCase("pt-BR");
+  if (source !== lower && source !== source.toLocaleUpperCase("pt-BR")) return source;
+  const particles = new Set(["a", "ao", "aos", "as", "à", "às", "com", "da", "das", "de", "do", "dos", "e", "em", "na", "nas", "no", "nos", "para", "por", "sem"]);
+  return lower.split(" ").map((word, index) => {
+    if (index > 0 && particles.has(word)) return word;
+    return word.replace(/^\p{L}/u, (letter) => letter.toLocaleUpperCase("pt-BR"));
+  }).join(" ");
 }
 
 function officerSupportLabel(supportName: string | null, supportAssigned: boolean) {
@@ -112,13 +124,13 @@ function OfficerDetails({
   );
 }
 
-function RecordArtwork({ photo, kind }: { photo: PrivateImageReference | null; kind: "occurrence" | "person" | "vehicle" }) {
+function RecordArtwork({ photo, kind, size = "card" }: { photo: PrivateImageReference | null; kind: "occurrence" | "person" | "vehicle"; size?: "card" | "detail" }) {
   const fallback = kind === "occurrence"
     ? <ClipboardList size={21} aria-hidden="true" />
     : kind === "person"
       ? <UserRound size={21} aria-hidden="true" />
       : <CarFront size={21} aria-hidden="true" />;
-  return <PrivateRecordThumbnail photo={photo} fallback={fallback} />;
+  return <PrivateRecordThumbnail photo={photo} fallback={fallback} size={size} />;
 }
 
 function occurrenceLocation(item: OccurrencePreview) {
@@ -126,53 +138,65 @@ function occurrenceLocation(item: OccurrencePreview) {
   return parts.length ? parts.join(" · ") : "Local não informado";
 }
 
-function OccurrenceCard({ item }: { item: OccurrencePreview }) {
+function OccurrenceCard({ item, onOpen }: { item: OccurrencePreview; onOpen: (record: SelectedRecord) => void }) {
   const status = occurrenceStatus(item);
   const dateValue = item.data_hora_inicio || item.criado_em;
   const type = readableRecordType(item.tipo_ocorrencia || item.sub_tipo_ocorrencia, "Ocorrência registrada");
+  const number = occurrenceNumber(item);
+  const location = occurrenceLocation(item);
   return (
     <li className="dashboard-record-row dashboard-record-rich">
-      <RecordArtwork photo={item.photo} kind="occurrence" />
-      <div className="dashboard-record-main dashboard-record-rich-main">
-        <div className="dashboard-record-titleline">
-          <strong>{type}</strong>
-          <span className="dashboard-severity-chip">Gravidade · {readableRecordType(item.gravidade, "Não informada")}</span>
+      <button className="dashboard-record-card-button" type="button" onClick={() => onOpen({ kind: "occurrence", item })}>
+        <RecordArtwork photo={item.photo} kind="occurrence" />
+        <div className="dashboard-record-main dashboard-record-rich-main">
+          <div className="dashboard-record-titleline">
+            <strong>{type}</strong>
+            <span className={`dashboard-status ${statusTone(item.cancelado_em ? "cancelled" : item.status)}`}>{status}</span>
+            <ChevronRight className="dashboard-record-open-indicator" size={16} aria-hidden="true" />
+          </div>
+          <div className={`dashboard-record-summary-line ${number ? "" : "is-time-only"}`}>
+            {number && <span className="dashboard-record-number">BO nº {number}</span>}
+            <time dateTime={dateValue || undefined}>{formatDate(dateValue)}</time>
+          </div>
+          <div className="dashboard-record-location" title={location}><MapPin size={13} aria-hidden="true" /><span>{location}</span></div>
+          <div className="dashboard-record-state-line">
+            <span className="dashboard-severity-chip">Gravidade · {readableRecordType(item.gravidade, "Não informada")}</span>
+          </div>
+          <OfficerDetails creatorName={item.creatorName} supportName={item.supportName} supportAssigned={item.supportAssigned} />
         </div>
-        <div className="dashboard-record-summary-line">
-          <span className="dashboard-record-number">{occurrenceNumber(item)}</span>
-          <time dateTime={dateValue || undefined}>{formatDate(dateValue)}</time>
-        </div>
-        <div className="dashboard-record-location"><MapPin size={13} aria-hidden="true" /><span>{occurrenceLocation(item)}</span></div>
-        <div className="dashboard-record-state-line">
-          <span className={`dashboard-status ${statusTone(item.cancelado_em ? "cancelled" : item.status)}`}>{status}</span>
-        </div>
-        <OfficerDetails creatorName={item.creatorName} supportName={item.supportName} supportAssigned={item.supportAssigned} />
-      </div>
+      </button>
     </li>
   );
 }
 
-function ApproachCard({ item }: { item: ApproachPreview }) {
+function ApproachCard({ item, onOpen }: { item: ApproachPreview; onOpen: (record: SelectedRecord) => void }) {
   const person = item.kind === "pessoa";
   const kindLabel = `Abordagem de ${person ? "pessoa" : "veículo"}`;
-  const title = readableRecordType(item.tipo_atendimento || item.tipo_abordagem, kindLabel);
+  const type = readableRecordType(item.tipo_atendimento || item.tipo_abordagem, "Tipo não informado");
   const situation = item.fase || item.status_abordagem || item.status_regularizacao;
+  const status = humanizeStatus(situation, "Situação não informada");
   const dateValue = item.data_hora_inicio || item.criado_em;
+  const location = item.local_abordagem?.trim() || "Local não informado";
   return (
     <li className="dashboard-record-row dashboard-record-rich">
-      <RecordArtwork photo={item.photo} kind={person ? "person" : "vehicle"} />
-      <div className="dashboard-record-main dashboard-record-rich-main">
-        <div className="dashboard-record-titleline">
-          <strong>{title}</strong>
-          <span className="dashboard-record-kind-chip">{kindLabel}</span>
+      <button className="dashboard-record-card-button" type="button" onClick={() => onOpen({ kind: "approach", item })}>
+        <RecordArtwork photo={item.photo} kind={person ? "person" : "vehicle"} />
+        <div className="dashboard-record-main dashboard-record-rich-main">
+          <div className="dashboard-record-titleline">
+            <strong>{kindLabel}</strong>
+            <ChevronRight className="dashboard-record-open-indicator" size={16} aria-hidden="true" />
+          </div>
+          <div className="dashboard-record-summary-line">
+            <span className="dashboard-record-kind-chip">Tipo · {type}</span>
+            <time dateTime={dateValue || undefined}>{formatDate(dateValue)}</time>
+          </div>
+          <div className="dashboard-record-location" title={location}><MapPin size={13} aria-hidden="true" /><span>{location}</span></div>
+          <div className="dashboard-record-state-line">
+            <span className={`dashboard-status ${statusTone(situation)}`}>{status}</span>
+          </div>
+          <OfficerDetails creatorName={item.creatorName} supportName={item.supportName} supportAssigned={item.supportAssigned} />
         </div>
-        <div className="dashboard-record-summary-line">
-          <span className={`dashboard-status ${statusTone(situation)}`}>{humanizeStatus(situation, "Situação não informada")}</span>
-          <time dateTime={dateValue || undefined}>{formatDate(dateValue)}</time>
-        </div>
-        <div className="dashboard-record-location"><MapPin size={13} aria-hidden="true" /><span>{item.local_abordagem?.trim() || "Local não informado"}</span></div>
-        <OfficerDetails creatorName={item.creatorName} supportName={item.supportName} supportAssigned={item.supportAssigned} />
-      </div>
+      </button>
     </li>
   );
 }
@@ -222,6 +246,121 @@ function LoadFailure({ message, onRetry }: { message: string; onRetry: () => voi
   );
 }
 
+function DetailField({ label, value }: { label: string; value: string }) {
+  return <div><dt>{label}</dt><dd>{value}</dd></div>;
+}
+
+function RecordDetailsDialog({ record, onClose }: { record: SelectedRecord; onClose: () => void }) {
+  const dialogRef = useRef<HTMLElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const item = record.item;
+  const isOccurrence = record.kind === "occurrence";
+  const dateValue = item.data_hora_inicio || item.criado_em;
+  const type = record.kind === "occurrence"
+    ? readableRecordType(record.item.tipo_ocorrencia || record.item.sub_tipo_ocorrencia, "Ocorrência registrada")
+    : readableRecordType(record.item.tipo_atendimento || record.item.tipo_abordagem, "Tipo não informado");
+  const category = record.kind === "occurrence" ? "Boletim de ocorrência" : `Abordagem de ${record.item.kind}`;
+  const number = record.kind === "occurrence" ? occurrenceNumber(record.item) : null;
+  const location = record.kind === "occurrence" ? occurrenceLocation(record.item) : record.item.local_abordagem?.trim() || "Local não informado";
+  const status = record.kind === "occurrence"
+    ? occurrenceStatus(record.item)
+    : humanizeStatus(record.item.fase || record.item.status_abordagem || record.item.status_regularizacao, "Situação não informada");
+  const fields = record.kind === "occurrence"
+    ? [
+        { label: "Número do boletim", value: number ? `BO nº ${number}` : "Não informado" },
+        { label: "Data e hora", value: formatDate(dateValue) },
+        { label: "Localização", value: location },
+        { label: "Status", value: status },
+        { label: "Gravidade", value: readableRecordType(record.item.gravidade, "Não informada") },
+      ]
+    : [
+        { label: "Categoria", value: category },
+        { label: "Tipo", value: type },
+        { label: "Data e hora", value: formatDate(dateValue) },
+        { label: "Localização", value: location },
+        { label: "Fase / situação", value: status },
+      ];
+  const artKind = record.kind === "occurrence" ? "occurrence" : record.item.kind === "pessoa" ? "person" : "vehicle";
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const focusFrame = window.requestAnimationFrame(() => closeButtonRef.current?.focus());
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const dialog = dialogRef.current;
+      const focusable = dialog
+        ? Array.from(dialog.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'))
+        : [];
+      if (focusable.length === 0) {
+        event.preventDefault();
+        dialog?.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const focusOutside = !dialog?.contains(document.activeElement);
+      if (event.shiftKey && (document.activeElement === first || focusOutside)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || focusOutside)) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+      if (previouslyFocused?.isConnected) previouslyFocused.focus({ preventScroll: true });
+    };
+  }, [onClose]);
+
+  return createPortal(
+    <div className="dashboard-record-detail-backdrop dashboard-theme-blue" onPointerDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <section
+        ref={dialogRef}
+        className="dashboard-record-detail-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dashboard-record-detail-title"
+        aria-describedby="dashboard-record-detail-description"
+        tabIndex={-1}
+      >
+        <div className="dashboard-record-detail-topbar">
+          <p className="dashboard-eyebrow">DETALHES DO REGISTRO</p>
+          <button ref={closeButtonRef} className="dashboard-record-detail-close" type="button" onClick={onClose} aria-label="Fechar detalhes">
+            <X size={18} aria-hidden="true" />
+          </button>
+        </div>
+        <div className="dashboard-record-detail-intro">
+          <RecordArtwork photo={item.photo} kind={artKind} size="detail" />
+          <div>
+            <span className="dashboard-record-detail-category">{category}</span>
+            <h2 id="dashboard-record-detail-title">{type}</h2>
+            <p id="dashboard-record-detail-description">Informações principais do registro, sem exibir dados pessoais desnecessários.</p>
+          </div>
+        </div>
+        <dl className="dashboard-record-detail-grid">
+          {fields.map((field) => <DetailField key={field.label} label={field.label} value={field.value} />)}
+        </dl>
+        <div className="dashboard-record-detail-team">
+          <p className="dashboard-eyebrow">EQUIPE DO REGISTRO</p>
+          <OfficerDetails creatorName={item.creatorName} supportName={item.supportName} supportAssigned={item.supportAssigned} />
+        </div>
+      </section>
+    </div>,
+    document.body,
+  );
+}
+
 export default function DashboardActivity({
   profileRole,
   data,
@@ -239,7 +378,9 @@ export default function DashboardActivity({
 }) {
   const showTeamOverview = isManagementRole(profileRole);
   const [activeTab, setActiveTab] = useState<DashboardRecordTabId>("occurrences");
+  const [selectedRecord, setSelectedRecord] = useState<SelectedRecord | null>(null);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const closeRecordDetails = useCallback(() => setSelectedRecord(null), []);
 
   useEffect(() => {
     setActiveTab("occurrences");
@@ -320,12 +461,12 @@ export default function DashboardActivity({
   const recordRows = !data
     ? []
     : selectedTab.id === "occurrences"
-      ? data.occurrences.map((item) => <OccurrenceCard key={item.id} item={item} />)
+      ? data.occurrences.map((item) => <OccurrenceCard key={item.id} item={item} onOpen={setSelectedRecord} />)
       : selectedTab.id === "people"
-        ? data.peopleApproaches.map((item) => <ApproachCard key={`pessoa-${item.id}`} item={item} />)
+        ? data.peopleApproaches.map((item) => <ApproachCard key={`pessoa-${item.id}`} item={item} onOpen={setSelectedRecord} />)
         : selectedTab.id === "vehicles"
-          ? data.vehicleApproaches.map((item) => <ApproachCard key={`veiculo-${item.id}`} item={item} />)
-          : data.approaches.map((item) => <ApproachCard key={`${item.kind}-${item.id}`} item={item} />);
+          ? data.vehicleApproaches.map((item) => <ApproachCard key={`veiculo-${item.id}`} item={item} onOpen={setSelectedRecord} />)
+          : data.approaches.map((item) => <ApproachCard key={`${item.kind}-${item.id}`} item={item} onOpen={setSelectedRecord} />);
 
   function onTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, currentIndex: number) {
     let nextIndex = currentIndex;
@@ -409,6 +550,7 @@ export default function DashboardActivity({
           </EmptyRecords>
         )}
       </div>
+      {selectedRecord && <RecordDetailsDialog record={selectedRecord} onClose={closeRecordDetails} />}
     </section>
   );
 }
