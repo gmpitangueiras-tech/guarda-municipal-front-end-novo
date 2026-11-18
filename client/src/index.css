@@ -2110,3 +2110,37 @@ input:focus-visible {
   .dashboard-record-detail-backdrop,
   .dashboard-record-detail-sheet { animation: none; transition: none; }
 }
+
+
+/* Cabeçalho do BO em uma única linha: tipo → gravidade → status. */
+.dashboard-record-card-button .dashboard-occurrence-titleline {
+  flex-wrap: nowrap;
+  gap: 4px;
+  overflow: hidden;
+}
+.dashboard-theme-blue .dashboard-record-card-button .dashboard-occurrence-titleline > strong {
+  flex: 1 1 0%;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+}
+.dashboard-record-card-button .dashboard-occurrence-titleline > .dashboard-severity-chip,
+.dashboard-record-card-button .dashboard-occurrence-titleline > .dashboard-status {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.dashboard-record-card-button .dashboard-occurrence-titleline > .dashboard-severity-chip {
+  max-width: 38%;
+  padding-right: 5px;
+  padding-left: 5px;
+  font-size: 8px;
+}
+.dashboard-record-card-button .dashboard-occurrence-titleline > .dashboard-status {
+  max-width: 32%;
+  font-size: 8px;
+}

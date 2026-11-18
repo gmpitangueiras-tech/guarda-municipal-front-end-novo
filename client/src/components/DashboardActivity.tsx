@@ -156,11 +156,10 @@ function OccurrenceCard({ item, onOpen }: { item: OccurrencePreview; onOpen: (re
       <button className="dashboard-record-card-button" type="button" onClick={() => onOpen({ kind: "occurrence", item })}>
         <RecordArtwork photo={item.photo} kind="occurrence" />
         <div className="dashboard-record-main dashboard-record-rich-main">
-          <div className="dashboard-record-titleline">
+          <div className="dashboard-record-titleline dashboard-occurrence-titleline">
             <strong>{type}</strong>
             <span className="dashboard-severity-chip">Gravidade · {severity}</span>
             <span className={`dashboard-status ${statusTone(item.cancelado_em ? "cancelled" : item.status)}`}>{status}</span>
-            <ChevronRight className="dashboard-record-open-indicator" size={16} aria-hidden="true" />
           </div>
           <div className={`dashboard-record-summary-line ${number ? "" : "is-time-only"}`}>
             {number && <span className="dashboard-record-number">BO nº {number}</span>}
