@@ -107,6 +107,12 @@ function officerSupportLabel(supportName: string | null, supportAssigned: boolea
   return supportName?.trim() || (supportAssigned ? "GM indisponível" : "Apoio não informado");
 }
 
+function approachTypeLabel(value: string | null | undefined) {
+  const normalized = value?.trim().replaceAll("_", " ").replace(/\s+/g, " ").toLocaleLowerCase("pt-BR");
+  if (normalized === "legado não classificado" || normalized === "legado não identificado") return "Orientação";
+  return readableRecordType(value, "Tipo não informado");
+}
+
 function OfficerDetails({
   creatorName,
   supportName,
@@ -142,6 +148,7 @@ function OccurrenceCard({ item, onOpen }: { item: OccurrencePreview; onOpen: (re
   const status = occurrenceStatus(item);
   const dateValue = item.data_hora_inicio || item.criado_em;
   const type = readableRecordType(item.tipo_ocorrencia || item.sub_tipo_ocorrencia, "Ocorrência registrada");
+  const severity = readableRecordType(item.gravidade, "Não informada");
   const number = occurrenceNumber(item);
   const location = occurrenceLocation(item);
   return (
@@ -151,6 +158,7 @@ function OccurrenceCard({ item, onOpen }: { item: OccurrencePreview; onOpen: (re
         <div className="dashboard-record-main dashboard-record-rich-main">
           <div className="dashboard-record-titleline">
             <strong>{type}</strong>
+            <span className="dashboard-severity-chip">Gravidade · {severity}</span>
             <span className={`dashboard-status ${statusTone(item.cancelado_em ? "cancelled" : item.status)}`}>{status}</span>
             <ChevronRight className="dashboard-record-open-indicator" size={16} aria-hidden="true" />
           </div>
@@ -159,9 +167,6 @@ function OccurrenceCard({ item, onOpen }: { item: OccurrencePreview; onOpen: (re
             <time dateTime={dateValue || undefined}>{formatDate(dateValue)}</time>
           </div>
           <div className="dashboard-record-location" title={location}><MapPin size={13} aria-hidden="true" /><span>{location}</span></div>
-          <div className="dashboard-record-state-line">
-            <span className="dashboard-severity-chip">Gravidade · {readableRecordType(item.gravidade, "Não informada")}</span>
-          </div>
           <OfficerDetails creatorName={item.creatorName} supportName={item.supportName} supportAssigned={item.supportAssigned} />
         </div>
       </button>
@@ -172,7 +177,7 @@ function OccurrenceCard({ item, onOpen }: { item: OccurrencePreview; onOpen: (re
 function ApproachCard({ item, onOpen }: { item: ApproachPreview; onOpen: (record: SelectedRecord) => void }) {
   const person = item.kind === "pessoa";
   const kindLabel = `Abordagem de ${person ? "pessoa" : "veículo"}`;
-  const type = readableRecordType(item.tipo_atendimento || item.tipo_abordagem, "Tipo não informado");
+  const type = approachTypeLabel(item.tipo_atendimento || item.tipo_abordagem);
   const situation = item.fase || item.status_abordagem || item.status_regularizacao;
   const status = humanizeStatus(situation, "Situação não informada");
   const dateValue = item.data_hora_inicio || item.criado_em;
@@ -258,7 +263,7 @@ function RecordDetailsDialog({ record, onClose }: { record: SelectedRecord; onCl
   const dateValue = item.data_hora_inicio || item.criado_em;
   const type = record.kind === "occurrence"
     ? readableRecordType(record.item.tipo_ocorrencia || record.item.sub_tipo_ocorrencia, "Ocorrência registrada")
-    : readableRecordType(record.item.tipo_atendimento || record.item.tipo_abordagem, "Tipo não informado");
+    : approachTypeLabel(record.item.tipo_atendimento || record.item.tipo_abordagem);
   const category = record.kind === "occurrence" ? "Boletim de ocorrência" : `Abordagem de ${record.item.kind}`;
   const number = record.kind === "occurrence" ? occurrenceNumber(record.item) : null;
   const location = record.kind === "occurrence" ? occurrenceLocation(record.item) : record.item.local_abordagem?.trim() || "Local não informado";

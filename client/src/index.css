@@ -1970,9 +1970,9 @@ input:focus-visible {
 .dashboard-record-card-button:focus-visible { outline: 3px solid rgba(58, 108, 157, .4); outline-offset: 2px; }
 .dashboard-record-card-button .dashboard-record-artwork { margin-top: 1px; }
 .dashboard-theme-blue .dashboard-record-rich-main { display: grid; min-width: 0; gap: 7px; }
-.dashboard-record-card-button .dashboard-record-titleline { align-items: flex-start; flex-wrap: nowrap; gap: 7px; min-width: 0; }
+.dashboard-record-card-button .dashboard-record-titleline { align-items: center; flex-wrap: wrap; gap: 6px 7px; min-width: 0; }
 .dashboard-theme-blue .dashboard-record-card-button .dashboard-record-titleline > strong {
-  flex: 1 1 auto;
+  flex: 1 1 105px;
   min-width: 0;
   color: #153b60;
   font-size: 14px;
@@ -1983,7 +1983,14 @@ input:focus-visible {
 }
 .dashboard-record-card-button .dashboard-record-titleline > .dashboard-status {
   flex: 0 1 auto;
-  max-width: 43%;
+  max-width: 100%;
+  min-height: 22px;
+  white-space: normal;
+  line-height: 1.2;
+}
+.dashboard-record-card-button .dashboard-record-titleline > .dashboard-severity-chip {
+  flex: 0 1 auto;
+  max-width: 100%;
   min-height: 22px;
   white-space: normal;
   line-height: 1.2;
