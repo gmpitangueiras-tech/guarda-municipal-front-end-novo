@@ -1,18 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  ArrowRight,
-  CircleAlert,
-  ClipboardList,
-  RefreshCw,
-  Shield,
-  ShieldCheck,
-  UserRound,
-} from "lucide-react";
+import { CircleAlert } from "lucide-react";
 import type { PerfilFuncional } from "@/lib/auth";
 import DashboardActivity from "@/components/DashboardActivity";
 import NotificationCenter from "@/components/NotificationCenter";
 import {
-  isManagementRole,
   loadDashboardData,
   setAllNotificationReadState,
   setNotificationReadState,
@@ -47,7 +38,6 @@ export default function Dashboard({ profile, onUnreadCountChange }: DashboardPro
   const [actionError, setActionError] = useState<string | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const hasLoadedRef = useRef(false);
-  const showTeamOverview = isManagementRole(profile.perfil);
 
   const refresh = useCallback(async () => {
     setError(null);
@@ -138,11 +128,6 @@ export default function Dashboard({ profile, onUnreadCountChange }: DashboardPro
     };
   }, [openNotifications]);
 
-  const quickActions = [
-    { title: "Consultar ocorrências", description: "Abrir a consulta operacional", icon: ClipboardList, route: "ocorrencias" },
-    { title: "Consultar abordagens", description: "Pessoas e veículos", icon: Shield, route: "consulta" },
-  ];
-
   return (
     <>
       {notificationsOpen && (
@@ -162,43 +147,8 @@ export default function Dashboard({ profile, onUnreadCountChange }: DashboardPro
       <main className="dashboard-content">
         <section className="dashboard-welcome">
           <div>
-            <p className="dashboard-eyebrow">{showTeamOverview ? "PAINEL DA EQUIPE" : "PAINEL INDIVIDUAL"} · {new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "numeric", month: "short" }).format(new Date())}</p>
+            <p className="dashboard-eyebrow">{new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "numeric", month: "short" }).format(new Date())}</p>
             <h1>Bom serviço, <span>{shortName(profile)}.</span></h1>
-            <p>{showTeamOverview
-              ? "Acompanhe os registros mais recentes de toda a equipe."
-              : "Acompanhe suas ocorrências, abordagens e avisos pessoais."}</p>
-          </div>
-        </section>
-
-        {isLoading && !data && !error && (
-          <div className="dashboard-sync-checking" role="status" aria-live="polite">
-            <RefreshCw size={15} className="spin" aria-hidden="true" /> Verificando registros pendentes de sincronização…
-          </div>
-        )}
-        {data && data.pendingSyncCount > 0 && (
-          <a className="dashboard-sync-alert" href="#/ocorrencias" aria-label={`${data.pendingSyncCount} registros pendentes de sincronização. Abrir ocorrências`}>
-            <span className="dashboard-sync-alert-icon"><RefreshCw size={19} aria-hidden="true" /></span>
-            <span><strong>{data.pendingSyncCount} registro{data.pendingSyncCount === 1 ? "" : "s"} pendente{data.pendingSyncCount === 1 ? "" : "s"} de sincronização</strong><small>Confira a situação dos registros no aplicativo operacional.</small></span>
-            <ArrowRight size={18} aria-hidden="true" />
-          </a>
-        )}
-
-        <section className="dashboard-section dashboard-quick-actions" aria-labelledby="dashboard-actions-title">
-          <div className="dashboard-section-heading">
-            <div><p className="dashboard-eyebrow">CONSULTA RÁPIDA</p><h2 id="dashboard-actions-title">Acesse seus registros</h2></div>
-            <span className="dashboard-section-note">Para criar, use “Novo registro” no menu inferior.</span>
-          </div>
-          <div className="dashboard-quick-grid">
-            {quickActions.map((action) => {
-              const Icon = action.icon;
-              return (
-                <a className="dashboard-quick-card" href={action.route === "ocorrencias" ? "#/ocorrencias" : `${BOMOBILE_URL}#${action.route}`} key={action.title}>
-                  <span className="dashboard-quick-icon"><Icon size={19} aria-hidden="true" /></span>
-                  <span className="dashboard-quick-copy"><strong>{action.title}</strong><small>{action.description}</small></span>
-                  <ArrowRight size={16} className="dashboard-quick-arrow" aria-hidden="true" />
-                </a>
-              );
-            })}
           </div>
         </section>
 
@@ -218,14 +168,6 @@ export default function Dashboard({ profile, onUnreadCountChange }: DashboardPro
           error={error}
           onRefresh={() => void refresh()}
         />
-
-        <footer className="dashboard-footer">
-          <ShieldCheck size={16} aria-hidden="true" />
-          <span>{showTeamOverview
-            ? "Visão da equipe · Até seis registros de qualquer período em cada categoria; notificações continuam individuais."
-            : "Área individual · Até seis ocorrências e abordagens criadas por você ou com sua participação."}</span>
-          <a href={`${BOMOBILE_URL}#notificacoes`}>Central de notificações</a>
-        </footer>
       </main>
     </>
   );

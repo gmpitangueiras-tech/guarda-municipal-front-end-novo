@@ -7,7 +7,6 @@ import {
   CircleAlert,
   ClipboardList,
   Clock,
-  FilePlus2,
   MapPin,
   RefreshCw,
   Search,
@@ -29,12 +28,10 @@ import {
   chipsAtivos,
   concluirBO,
   contarFiltrosAtivos,
-  construirQuery,
   escreverUrl,
   FILTRO_VAZIO,
   formatarDia,
   formatarDuracao,
-  formatarHorarioGerado,
   formatarRelativo,
   GRAVIDADES,
   gravarOrdenacao,
@@ -189,11 +186,6 @@ function CartaoOcorrencia({ item, onAbrir }: { item: OcorrenciaItem; onAbrir: (i
               {equipe.nota ? <span className="occurrence-team-note">{equipe.nota}</span> : null}
             </span>
           ) : null}
-          <span className={`occurrence-sync${item.sincronia_alarme ? " is-alarme" : ""}`}>
-            <RefreshCw size={13} aria-hidden="true" />
-            {item.sincronia_rotulo}
-            {item.tem_retificacao ? <em> · registro com retificação</em> : null}
-          </span>
         </span>
         <span className={`occurrence-card-open${concluivel ? " is-acao" : ""}`}>
           {concluivel ? "Concluir BO" : "Ver detalhes"} <ArrowRight size={16} aria-hidden="true" />
@@ -216,57 +208,6 @@ function SkeletonCard() {
         </span>
       </div>
     </li>
-  );
-}
-
-type CartaoIndicador = {
-  rotulo: string;
-  valor: string;
-  nota?: string;
-  tom: string;
-};
-
-function KpiCard({
-  cartao,
-  ativo,
-  onClick,
-}: {
-  cartao: CartaoIndicador & { aba: AbaOcorrencia };
-  ativo: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      className={`occurrence-stat is-${cartao.tom}${ativo ? " is-active" : ""}`}
-      onClick={onClick}
-      aria-pressed={ativo}
-    >
-      <span className="occurrence-stat-head">
-        <span className="occurrence-stat-label">{cartao.rotulo}</span>
-        <span className="occurrence-stat-icon" aria-hidden="true">
-          {cartao.tom === "incompleto" ? <CircleAlert size={18} /> : cartao.tom === "concluido" ? <Check size={18} /> : <Clock size={18} />}
-        </span>
-      </span>
-      <span className="occurrence-stat-value">{cartao.valor}</span>
-      {cartao.nota ? <span className="occurrence-stat-note">{cartao.nota}</span> : null}
-      <span className="occurrence-stat-go">
-        Ver registros <ArrowRight size={14} aria-hidden="true" />
-      </span>
-    </button>
-  );
-}
-
-function KpiEstatico({ cartao }: { cartao: CartaoIndicador }) {
-  return (
-    <div className={`occurrence-stat is-${cartao.tom} is-static`}>
-      <span className="occurrence-stat-head">
-        <span className="occurrence-stat-label">{cartao.rotulo}</span>
-        <span className="occurrence-stat-icon" aria-hidden="true"><Clock size={18} /></span>
-      </span>
-      <span className="occurrence-stat-value">{cartao.valor}</span>
-      {cartao.nota ? <span className="occurrence-stat-note">{cartao.nota}</span> : null}
-    </div>
   );
 }
 
@@ -1049,9 +990,6 @@ export default function Occurrences({ profile }: { profile: PerfilFuncional }) {
   const baseTotais = totaisEscopo ?? totais;
   const chips = chipsAtivos(filtro, baseTotais);
   const filtrosAtivos = contarFiltrosAtivos(filtro);
-  /** O formulário novo abre com o recorte atual embutido para o botão voltar. */
-  const consultaAtual = construirQuery(filtro, ordenacao);
-  const enderecoNova = `#/ocorrencias/nova${consultaAtual ? `?${consultaAtual}` : ""}`;
 
   const abas: Array<{ id: AbaOcorrencia; rotulo: string; contador: number | null }> = [
     { id: "todas", rotulo: "Todas", contador: baseTotais?.abas.todas ?? null },
@@ -1086,35 +1024,6 @@ export default function Occurrences({ profile }: { profile: PerfilFuncional }) {
     return lista;
   }, [agrupamentos, itens]);
 
-  const kpisAba: Array<CartaoIndicador & { aba: AbaOcorrencia }> = [];
-  const kpisEstaticos: CartaoIndicador[] = [];
-  if (baseTotais) {
-    const construir = (aba: AbaOcorrencia, rotulo: string, valor: number, tom: string) => {
-      if (valor > 0) kpisAba.push({ aba, rotulo, valor: valor.toLocaleString("pt-BR"), tom });
-    };
-    if (manager) {
-      construir("complementar", "A complementar", baseTotais.abas.complementar, "incompleto");
-      construir("atendimento", "Em atendimento", baseTotais.abas.atendimento, "ativo");
-      const duracaoMedia = formatarDuracao(baseTotais.metricas.duracao_media_min);
-      if (duracaoMedia) {
-        kpisEstaticos.push({
-          rotulo: "Duração média",
-          valor: duracaoMedia,
-          tom: "duracao",
-          nota:
-            baseTotais.metricas.taxa_encerramento_pct !== null
-              ? `Encerramento ${baseTotais.metricas.taxa_encerramento_pct}%`
-              : undefined,
-        });
-      }
-      construir("encerradas", "Encerradas", baseTotais.abas.encerradas, "concluido");
-    } else {
-      construir("atendimento", "Em atendimento", baseTotais.abas.atendimento, "ativo");
-      construir("complementar", "A complementar", baseTotais.abas.complementar, "incompleto");
-      construir("encerradas", "Encerradas no período", baseTotais.abas.encerradas, "concluido");
-    }
-  }
-
   function conteudoVazio(): { titulo: string; texto: string } {
     if (filtrosAtivos > 0) {
       return {
@@ -1144,30 +1053,13 @@ export default function Occurrences({ profile }: { profile: PerfilFuncional }) {
       <div className="occurrences-content">
         <section className="occurrences-hero" aria-labelledby="occurrences-title">
           <div className="occurrences-hero-copy">
-            <p className="dashboard-eyebrow">
-              {manager ? "CENTRAL DA CORPORAÇÃO" : "SUA ATUAÇÃO"} · REGISTROS OPERACIONAIS
-            </p>
             <h1 id="occurrences-title">Ocorrências</h1>
-            <p>
-              {manager
-                ? "Situação, documento e sincronia de cada BO vêm do servidor."
-                : "Consulte os atendimentos em que você entrou e o que ainda precisa ser fechado."}
-            </p>
           </div>
           <div className="occurrences-hero-actions">
-            <span className="occurrences-total">
-              <strong>{total.toLocaleString("pt-BR")}</strong>{" "}
-              {total === 1 ? "registro neste filtro" : "registros neste filtro"}
-              {totais ? <em>Atualizado às {formatarHorarioGerado(totais.geradoEm)}</em> : null}
-            </span>
             <button className="occurrences-refresh" type="button" onClick={tentarNovamente} disabled={carregando || atualizando}>
               <RefreshCw size={16} className={atualizando ? "spin" : ""} aria-hidden="true" />
               <span>{atualizando ? "Atualizando…" : "Atualizar"}</span>
             </button>
-            <a className="occurrences-create" href={enderecoNova}>
-              <FilePlus2 size={17} aria-hidden="true" />
-              <span>Nova ocorrência</span>
-            </a>
           </div>
         </section>
 
@@ -1207,22 +1099,6 @@ export default function Occurrences({ profile }: { profile: PerfilFuncional }) {
             <CircleAlert size={16} aria-hidden="true" />
             <span>Os totais não bateram com a lista. Atualize para conferir os números.</span>
           </p>
-        ) : null}
-
-        {baseTotais && !avisoCoerencia && (kpisAba.length > 0 || kpisEstaticos.length > 0) ? (
-          <section className="occurrences-summary" aria-label="Indicadores do período">
-            {kpisAba.map((cartao) => (
-              <KpiCard
-                key={cartao.rotulo}
-                cartao={cartao}
-                ativo={filtro.aba === cartao.aba}
-                onClick={() => mudarAba(cartao.aba)}
-              />
-            ))}
-            {kpisEstaticos.map((cartao) => (
-              <KpiEstatico key={cartao.rotulo} cartao={cartao} />
-            ))}
-          </section>
         ) : null}
 
         <section className="occurrences-workspace" aria-label="Lista e filtros de ocorrências">
@@ -1300,18 +1176,6 @@ export default function Occurrences({ profile }: { profile: PerfilFuncional }) {
               </button>
             </div>
           ) : null}
-
-          <div className="occurrences-list-heading">
-            <div>
-              <p className="dashboard-eyebrow">{manager ? "DADOS DO SERVIDOR" : "REGISTROS EM QUE VOCÊ ENTROU"}</p>
-              <h2>{abas.find((aba) => aba.id === filtro.aba)?.rotulo ?? "Ocorrências"}</h2>
-            </div>
-            {atualizando ? (
-              <span className="occurrences-refreshing">
-                <RefreshCw size={14} className="spin" aria-hidden="true" /> Atualizando lista
-              </span>
-            ) : null}
-          </div>
 
           {erro && itens.length > 0 ? (
             <div className="occurrences-error" role="alert">

@@ -488,9 +488,7 @@ export default function DashboardActivity({
     <section className="dashboard-panel dashboard-records-panel" aria-label="Registros recentes">
       <div className="dashboard-records-heading">
         <div>
-          <p className="dashboard-eyebrow">{showTeamOverview ? "VISÃO DA EQUIPE" : "SUA ATUAÇÃO"}</p>
           <h2 id="dashboard-records-title">{selectedTab.title}</h2>
-          <p>{selectedTab.description}</p>
         </div>
         <div className="dashboard-records-tools">
           {isRefreshing && <span className="dashboard-refresh-state"><RefreshCw size={13} className="spin" aria-hidden="true" /> Atualizando</span>}
@@ -523,7 +521,6 @@ export default function DashboardActivity({
             onKeyDown={(event) => onTabKeyDown(event, index)}
           >
             <span>{tab.label}</span>
-            <small>{tab.count === null ? "—" : tab.count}</small>
           </button>
         ))}
       </div>

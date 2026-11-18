@@ -92,7 +92,6 @@ export type DashboardNotification = {
 
 export type DashboardData = {
   occurrences: OccurrencePreview[];
-  pendingSyncCount: number;
   peopleApproaches: ApproachPreview[];
   vehicleApproaches: ApproachPreview[];
   approaches: ApproachPreview[];
@@ -288,25 +287,6 @@ async function getParticipatedOccurrenceIds(profileId: string): Promise<string[]
   return [...new Set(ids)];
 }
 
-async function getPendingSyncRows(): Promise<Array<{ id: string; criado_por: string }>> {
-  if (!supabase) throw new Error("Serviço de dados indisponível.");
-
-  const rows: Array<{ id: string; criado_por: string }> = [];
-  for (let offset = 0; ; offset += PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from("ocorrencias")
-      .select("id,criado_por")
-      .eq("status", "pending_sync")
-      .is("deleted_at", null)
-      .range(offset, offset + PAGE_SIZE - 1);
-    if (error) throw error;
-    const page = data ?? [];
-    rows.push(...page);
-    if (page.length < PAGE_SIZE) break;
-  }
-  return rows;
-}
-
 async function getParticipatedOccurrences(ids: string[]): Promise<RawOccurrenceRow[]> {
   if (!supabase || ids.length === 0) return [];
 
@@ -355,10 +335,9 @@ export async function loadDashboardData(profileId: string, profileRole: string |
     ? vehiclesBaseQuery
     : vehiclesBaseQuery.or(`criado_por.eq.${profileId},guarda_apoio_id.eq.${profileId}`);
 
-  const [participatedIds, pendingRows, occurrencesResult, peopleResult, vehiclesResult, notificationResult, unreadResult] =
+  const [participatedIds, occurrencesResult, peopleResult, vehiclesResult, notificationResult, unreadResult] =
     await Promise.all([
       isTeamOverview ? Promise.resolve([] as string[]) : getParticipatedOccurrenceIds(profileId),
-      getPendingSyncRows(),
       occurrenceQuery
         .is("deleted_at", null)
         .order("criado_em", { ascending: false, nullsFirst: false })
@@ -395,10 +374,6 @@ export async function loadDashboardData(profileId: string, profileRole: string |
     occurrencesById.set(occurrence.id, occurrence);
   }
   const rawOccurrences = sortByRecent([...occurrencesById.values()]).slice(0, 6);
-  const participatedSet = new Set(participatedIds);
-  const pendingSyncCount = isTeamOverview
-    ? pendingRows.length
-    : pendingRows.filter((row) => row.criado_por === profileId || participatedSet.has(row.id)).length;
 
   const rawPeople = (peopleResult.data ?? []) as unknown as RawApproachRow[];
   const rawVehicles = (vehiclesResult.data ?? []) as unknown as RawApproachRow[];
@@ -469,7 +444,6 @@ export async function loadDashboardData(profileId: string, profileRole: string |
 
   return {
     occurrences,
-    pendingSyncCount,
     peopleApproaches: people.map(enrichApproach),
     vehicleApproaches: vehicles.map(enrichApproach),
     approaches: approaches.map(enrichApproach),

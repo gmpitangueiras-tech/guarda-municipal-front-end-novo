@@ -515,12 +515,8 @@ export default function OcorrenciaNova({ profile }: { profile: PerfilFuncional }
       <div className="occurrences-content">
         <section className="occurrences-hero" aria-labelledby="ocorrencia-nova-title">
           <div className="occurrences-hero-copy">
-            <p className="dashboard-eyebrow">NOVO REGISTRO · BO DA GUARDA</p>
             <h1 id="ocorrencia-nova-title">Registrar ocorrência</h1>
-            <p>
-              Etapas curtas, uma pergunta por vez. O registro só existe depois de gravado no servidor — nada fica
-              preso neste aparelho.
-            </p>
+            <p>Informe os dados essenciais e revise antes de registrar.</p>
           </div>
           <div className="occurrences-hero-actions">
             <span className="occurrences-total">
