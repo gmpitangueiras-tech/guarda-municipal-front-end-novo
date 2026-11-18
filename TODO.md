@@ -35,3 +35,12 @@
 - [x] Agrupar notificações por Hoje, Ontem, Esta semana e Anteriores, com ícones e cores por tipo.
 - [x] Permitir abrir a notificação, marcá-la automaticamente como lida e alternar individualmente o estado de leitura.
 - [x] Tratar carregamento, estado vazio, erro de conexão e atualização ao abrir/recuperar a conexão.
+
+## Refinamento visual da Central de Notificações — concluído
+- [x] Diferenciar visualmente avisos urgentes, de atenção e informativos, reservando vermelho para rejeições ou falhas.
+- [x] Simplificar o cabeçalho e apresentar um resumo de não lidas, operacionais e avisos do sistema.
+- [x] Manter filtros horizontais compactos, com nomenclatura curta e contadores.
+- [x] Reorganizar o cartão para priorizar tipo, título, mensagem, horário e ação “Ver detalhes”.
+- [x] Exibir “Marcar como lida” somente em avisos não lidos e um estado discreto para avisos já lidos.
+- [x] Preservar a lista durante atualizações subsequentes, usando indicador leve em vez de esconder os avisos.
+- [x] Usar gaveta lateral no desktop e painel inferior/quase tela cheia no celular.
