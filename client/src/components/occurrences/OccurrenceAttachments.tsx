@@ -149,7 +149,7 @@ export default function OccurrenceAttachments({
         <span className="occurrence-attachments-icon"><Paperclip size={18} aria-hidden="true" /></span>
         <div>
           <h3>Anexos <span>Opcional</span></h3>
-          <p>{modo === "rapido" ? "Adicione fotos que ajudem a contextualizar o fato." : "Fotos, vídeos e PDFs podem complementar o BO."} Limite de 1 MiB por arquivo.</p>
+          <p>{modo === "rapido" ? "Fotos · até 1 MiB por arquivo." : "Fotos, vídeos ou PDFs · até 1 MiB por arquivo."}</p>
         </div>
       </div>
 

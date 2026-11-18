@@ -7,16 +7,15 @@ import {
   CheckCircle2,
   CircleAlert,
   ClipboardList,
-  Clock,
   Crosshair,
   FilePlus2,
+  LockKeyhole,
   MapPin,
   PencilLine,
   RefreshCw,
   ShieldCheck,
   Undo2,
   UserRound,
-  UsersRound,
   WifiOff,
 } from "lucide-react";
 import type { PerfilFuncional } from "@/lib/auth";
@@ -169,6 +168,10 @@ function idLabel(profile: PerfilFuncional): string {
   return `GM ${nome}${profile.matricula ? ` · Mat. ${profile.matricula}` : ""}`;
 }
 
+function normalizarBuscaGm(valor: string): string {
+  return valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").trim();
+}
+
 function rotuloDaGravidade(valor: GravidadeSlug | ""): string {
   return GRAVIDADES.find((opcao) => opcao.valor === valor)?.rotulo ?? "";
 }
@@ -249,11 +252,10 @@ function notaDeGeolocalizacao(erro: GeolocationPositionError): string {
   return "Não foi possível obter a posição automática. Digite as coordenadas manualmente.";
 }
 
-function Passo({ etapa, children }: { etapa: Etapa; children: ReactNode }) {
+function Passo({ etapa, children, mostrarTitulo = true }: { etapa: Etapa; children: ReactNode; mostrarTitulo?: boolean }) {
   return (
-    <section className="occurrence-new-step" aria-labelledby={`etapa-${etapa.id}`}>
-      <h2 id={`etapa-${etapa.id}`}>{etapa.titulo}</h2>
-      <p className="occurrence-new-legend">{etapa.legenda}</p>
+    <section className="occurrence-new-step" aria-labelledby={mostrarTitulo ? `etapa-${etapa.id}` : undefined} aria-label={!mostrarTitulo ? etapa.titulo : undefined}>
+      {mostrarTitulo ? <h2 id={`etapa-${etapa.id}`}>{etapa.titulo}</h2> : null}
       {children}
     </section>
   );
@@ -313,7 +315,7 @@ function EscolhaGravidade({
             onClick={() => onChange(opcao.valor)}
           >
             <strong>{opcao.rotulo}</strong>
-            <span>{opcao.valor === "baixa" ? "Sem risco imediato" : opcao.valor === "media" ? "Precisa de acompanhamento" : opcao.valor === "alta" ? "Risco concreto a pessoas" : "Risco de vida em curso"}</span>
+            <span>{opcao.valor === "baixa" ? "Sem risco imediato" : opcao.valor === "media" ? "Monitorar" : opcao.valor === "alta" ? "Risco às pessoas" : "Risco de vida"}</span>
           </button>
         ))}
       </div>
@@ -349,31 +351,114 @@ function EquipeCampos({
     return [{ id: profile.id, label: idLabel(profile) }, ...oficiais];
   }, [assinante, oficiais, profile]);
   const apoios = responsaveis.filter((oficial) => oficial.id !== responsavelId);
+  const [buscaApoio, setBuscaApoio] = useState("");
+  const [listaApoioAberta, setListaApoioAberta] = useState(false);
+  const [opcaoApoioAtiva, setOpcaoApoioAtiva] = useState(-1);
+  const apoioSelecionado = apoios.find((oficial) => oficial.id === apoioId) ?? null;
+  const buscaNormalizada = normalizarBuscaGm(buscaApoio).replace(/^gm\s*/, "");
+  const sugestoesApoio = useMemo(() => {
+    if (apoioSelecionado || buscaNormalizada.length < 3) return [];
+    return apoios.filter((oficial) => normalizarBuscaGm(oficial.label.replace(/^GM\s*/i, "")).includes(buscaNormalizada)).slice(0, 8);
+  }, [apoios, apoioSelecionado, buscaNormalizada]);
+
+  function escolherApoio(oficial: OfficerOption) {
+    onApoio(oficial.id);
+    setBuscaApoio(oficial.label);
+    setListaApoioAberta(false);
+    setOpcaoApoioAtiva(-1);
+  }
 
   return (
     <>
       <div className="occurrence-new-grid">
-        <Campo
-          titulo="GM responsável"
-          erro={erros.responsavelId}
-          dica={assinante ? "O GM autenticado vem selecionado; confirme quem assumiu o atendimento." : "O administrador seleciona um GM ativo para responder pelo atendimento."}
-        >
-          <select value={responsavelId} onChange={(event) => onResponsavel(event.target.value)} disabled={disabled || carregando}>
-            <option value="">{carregando ? "Carregando GMs…" : "Escolha o GM responsável"}</option>
-            {responsaveis.map((oficial) => <option key={oficial.id} value={oficial.id}>{oficial.label}</option>)}
-          </select>
+        <Campo titulo={assinante ? "GM responsável" : "GM responsável *"} erro={erros.responsavelId} dica={!assinante ? "Selecione um GM ativo." : undefined}>
+          {assinante ? (
+            <span className="occurrence-responsible-control">
+              <input className="occurrence-responsible-input" value={idLabel(profile)} readOnly aria-readonly="true" />
+              <LockKeyhole size={16} aria-hidden="true" />
+            </span>
+          ) : (
+            <select value={responsavelId} onChange={(event) => {
+              const id = event.target.value;
+              onResponsavel(id);
+              if (apoioId === id) {
+                onApoio("");
+                setBuscaApoio("");
+              }
+            }} disabled={disabled || carregando}>
+              <option value="">{carregando ? "Carregando GMs…" : "Escolha o GM responsável"}</option>
+              {responsaveis.map((oficial) => <option key={oficial.id} value={oficial.id}>{oficial.label}</option>)}
+            </select>
+          )}
         </Campo>
-        <Campo titulo="GM de apoio" erro={erros.apoioId} dica="Obrigatório: selecione outro GM ativo que participou do atendimento.">
-          <select value={apoioId} onChange={(event) => onApoio(event.target.value)} disabled={disabled || carregando}>
-            <option value="">{carregando ? "Carregando GMs…" : "Escolha o GM de apoio"}</option>
-            {apoios.map((oficial) => <option key={oficial.id} value={oficial.id}>{oficial.label}</option>)}
-          </select>
+        <Campo
+          titulo="GM de apoio *"
+          erro={erros.apoioId}
+          bloco
+          dica={!apoioSelecionado && buscaApoio.trim().length >= 3 && sugestoesApoio.length === 0 ? "Nenhum GM ativo encontrado." : undefined}
+        >
+          <div className="occurrence-officer-combobox">
+            <input
+              type="text"
+              role="combobox"
+              aria-label="Buscar GM de apoio"
+              aria-autocomplete="list"
+              aria-expanded={listaApoioAberta && buscaNormalizada.length >= 3}
+              aria-controls="gm-apoio-sugestoes"
+              aria-activedescendant={listaApoioAberta && opcaoApoioAtiva >= 0 && sugestoesApoio[opcaoApoioAtiva] ? `gm-apoio-${sugestoesApoio[opcaoApoioAtiva].id}` : undefined}
+              value={apoioSelecionado?.label ?? buscaApoio}
+              disabled={disabled || carregando}
+              onFocus={() => setListaApoioAberta(buscaNormalizada.length >= 3)}
+              onBlur={() => window.setTimeout(() => setListaApoioAberta(false), 120)}
+              onChange={(event) => {
+                const valor = event.target.value;
+                setBuscaApoio(valor);
+                setListaApoioAberta(true);
+                setOpcaoApoioAtiva(-1);
+                if (apoioId) onApoio("");
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowDown" && sugestoesApoio.length) {
+                  event.preventDefault();
+                  setListaApoioAberta(true);
+                  setOpcaoApoioAtiva((atual) => atual < 0 ? 0 : Math.min(atual + 1, sugestoesApoio.length - 1));
+                } else if (event.key === "ArrowUp" && sugestoesApoio.length) {
+                  event.preventDefault();
+                  setOpcaoApoioAtiva((atual) => atual < 0 ? sugestoesApoio.length - 1 : Math.max(atual - 1, 0));
+                } else if (event.key === "Enter" && listaApoioAberta && opcaoApoioAtiva >= 0 && sugestoesApoio[opcaoApoioAtiva]) {
+                  event.preventDefault();
+                  escolherApoio(sugestoesApoio[opcaoApoioAtiva]);
+                } else if (event.key === "Escape") {
+                  setListaApoioAberta(false);
+                }
+              }}
+              placeholder={carregando ? "Carregando GMs…" : "Digite 3 letras do nome ou matrícula"}
+              autoComplete="off"
+            />
+            {apoioSelecionado ? <CheckCircle2 className="occurrence-officer-selected" size={17} aria-label="GM de apoio selecionado" /> : null}
+            {listaApoioAberta && buscaNormalizada.length >= 3 ? (
+              <div className="occurrence-officer-suggestions" id="gm-apoio-sugestoes" role="listbox" aria-label="GMs de apoio encontrados">
+                {sugestoesApoio.length ? sugestoesApoio.map((oficial, index) => (
+                  <button
+                    id={`gm-apoio-${oficial.id}`}
+                    key={oficial.id}
+                    type="button"
+                    role="option"
+                    aria-selected={index === opcaoApoioAtiva}
+                    onPointerDown={(event) => event.preventDefault()}
+                    onClick={() => escolherApoio(oficial)}
+                  >
+                    <UserRound size={15} aria-hidden="true" /><span>{oficial.label}</span>
+                  </button>
+                )) : <span className="occurrence-officer-no-results">Nenhum GM ativo encontrado.</span>}
+              </div>
+            ) : null}
+          </div>
         </Campo>
       </div>
       {!carregando && responsaveis.length < 2 ? (
         <p className="occurrence-new-live is-alerta" role="status"><CircleAlert size={15} aria-hidden="true" /><span>São necessários pelo menos dois GMs ativos cadastrados. Peça ao administrador para revisar os usuários.</span></p>
       ) : null}
-      <p className="occurrence-new-team"><UserRound size={15} aria-hidden="true" /><span>Responsável</span><UsersRound size={15} aria-hidden="true" /><span>Apoio obrigatório — o mesmo GM não pode ocupar os dois papéis.</span></p>
     </>
   );
 }
@@ -632,7 +717,6 @@ export default function OcorrenciaNova({ profile }: { profile: PerfilFuncional }
             </button>
           </div>
           {!online ? <div className="occurrences-offline-banner" role="status"><WifiOff size={16} aria-hidden="true" /><span>Sem conexão. O registro só será salvo quando o servidor confirmar.</span></div> : null}
-          <p className="occurrence-mode-note"><ShieldCheck size={16} aria-hidden="true" /> Ambos os modos exigem gravidade e GM de apoio cadastrado. Anexos são opcionais.</p>
         </div>
       </main>
     );
@@ -648,10 +732,10 @@ export default function OcorrenciaNova({ profile }: { profile: PerfilFuncional }
         <section className="occurrences-hero" aria-labelledby="ocorrencia-nova-title">
           <div className="occurrences-hero-copy">
             <h1 id="ocorrencia-nova-title">{quick ? "BO Rápido" : "BO Completo"}</h1>
-            <p>{quick ? "Registre o essencial; o documento poderá ser complementado depois." : "Siga as sete etapas e revise os dados antes de concluir."}</p>
+            <p>{quick ? "Documento a complementar depois, se necessário." : "Preencha os dados e revise antes de concluir."}</p>
           </div>
           <div className="occurrences-hero-actions">
-            {quick ? <span className="occurrence-mode-pill is-quick"><Bolt size={14} aria-hidden="true" /> Registro essencial</span> : <span className="occurrences-total"><strong>Etapa {indice + 1} de 7</strong> · {etapa.rotulo}</span>}
+            {!quick ? <span className="occurrences-total"><strong>Etapa {indice + 1} de 7</strong> · {etapa.rotulo}</span> : null}
             {!registroCriado ? <button type="button" className="occurrences-clear-button" onClick={voltarAosModos}><ArrowLeft size={15} aria-hidden="true" /> Trocar modo</button> : null}
           </div>
         </section>
@@ -662,7 +746,6 @@ export default function OcorrenciaNova({ profile }: { profile: PerfilFuncional }
           <div className="occurrence-new-card occurrence-quick-card">
             <section className="occurrence-new-step" aria-labelledby="quick-fact-title">
               <h2 id="quick-fact-title">Dados do fato</h2>
-              <p className="occurrence-new-legend">O essencial para identificar o que aconteceu, onde e quando.</p>
               <div className="occurrence-new-grid">
                 <Campo titulo="Tipo de ocorrência" erro={erros.tipo_ocorrencia}>
                   <select value={form.tipo_ocorrencia} disabled={desabilitado} onChange={(event) => alterar("tipo_ocorrencia", event.target.value)}>
@@ -676,27 +759,24 @@ export default function OcorrenciaNova({ profile }: { profile: PerfilFuncional }
                 <Campo titulo="Data e hora do fato" erro={erros.inicio}>
                   <input type="datetime-local" value={form.inicio} disabled={desabilitado} onChange={(event) => alterar("inicio", event.target.value)} />
                 </Campo>
-                <div className="occurrence-quick-now-wrap"><button type="button" className="occurrences-clear-button occurrence-new-now" onClick={() => alterar("inicio", paraCampoDataHora(new Date()))} disabled={desabilitado}><Clock size={15} aria-hidden="true" /> Agora</button></div>
               </div>
               <EscolhaGravidade valor={form.gravidade} erro={erros.gravidade} disabled={desabilitado} onChange={(valor) => alterar("gravidade", valor)} />
-              <p className="occurrence-quick-origin"><span>Forma de solicitação</span><strong>{ORIGEM_RAPIDA}</strong></p>
             </section>
 
             <section className="occurrence-new-step" aria-labelledby="quick-team-title">
               <h2 id="quick-team-title">Equipe operacional</h2>
-              <p className="occurrence-new-legend">O responsável e o GM de apoio devem ser usuários ativos do sistema.</p>
-              <EquipeCampos profile={profile} oficiais={oficiais} responsavelId={form.responsavelId} apoioId={form.apoioId} carregando={carregandoOficiais} erros={erros} disabled={desabilitado} onResponsavel={(id) => { alterar("responsavelId", id); if (form.apoioId === id) alterar("apoioId", ""); }} onApoio={(id) => alterar("apoioId", id)} />
+              <EquipeCampos profile={profile} oficiais={oficiais} responsavelId={form.responsavelId} apoioId={form.apoioId} carregando={carregandoOficiais} erros={erros} disabled={desabilitado} onResponsavel={(id) => alterar("responsavelId", id)} onApoio={(id) => alterar("apoioId", id)} />
             </section>
 
             <section className="occurrence-new-step" aria-labelledby="quick-report-title">
               <h2 id="quick-report-title">Relato objetivo</h2>
-              <p className="occurrence-new-legend">Registre o que foi informado, observado e realizado, sem suposições.</p>
-              <Campo titulo="O que aconteceu?" erro={erros.relato} dica="O BO poderá ser complementado depois.">
+              <Campo titulo="O que aconteceu?" erro={erros.relato}>
                 <textarea rows={5} value={form.relato} disabled={desabilitado} onChange={(event) => alterar("relato", event.target.value)} placeholder="Resuma o fato, o que a equipe constatou e as providências adotadas." />
               </Campo>
-              <Campo titulo="Nome do solicitante" dica="Opcional — deixe em branco se não foi informado ou se preferiu não se identificar.">
-                <input value={form.nome} disabled={desabilitado} onChange={(event) => alterar("nome", event.target.value)} placeholder="Nome completo, se informado" />
-              </Campo>
+              <details className="occurrence-optional-details">
+                <summary>Solicitante <small>Opcional</small></summary>
+                <Campo titulo="Nome do solicitante"><input value={form.nome} disabled={desabilitado} onChange={(event) => alterar("nome", event.target.value)} placeholder="Nome, se informado" /></Campo>
+              </details>
             </section>
 
             <OccurrenceAttachments
@@ -711,7 +791,6 @@ export default function OcorrenciaNova({ profile }: { profile: PerfilFuncional }
 
             {registroCriado ? <p className="occurrence-saved-status" role="status"><CheckCircle2 size={17} aria-hidden="true" /> BO registrado{registroCriado.numero ? ` — Ocorrência ${registroCriado.numero}` : " no servidor"}. Nenhum novo BO será criado ao tentar novamente.</p> : null}
             {erroServidor ? <div className={`occurrences-error${registroCriado ? " is-upload-error" : ""}`} role="alert"><CircleAlert size={17} aria-hidden="true" /><span>{erroServidor}</span></div> : null}
-            {!registroCriado ? <p className="occurrence-new-privacy"><ShieldCheck size={16} aria-hidden="true" /><span>O BO é gravado diretamente no servidor. Se o atendimento continuar, ele permanecerá “A complementar” para ser concluído depois.</span></p> : null}
 
             <div className="occurrence-new-actions">
               <a className="occurrences-clear-button" href={enderecoDeVolta}><ArrowLeft size={15} aria-hidden="true" /> Cancelar</a>
@@ -748,17 +827,11 @@ export default function OcorrenciaNova({ profile }: { profile: PerfilFuncional }
                       {FORMAS_SOLICITACAO.map((forma) => <option key={forma} value={forma}>{forma}</option>)}
                     </select>
                   </Campo>
-                  <div className="occurrence-new-grid">
-                    <Campo titulo="Nome do solicitante" dica="Opcional — deixe em branco para solicitação anônima.">
-                      <input value={form.nome} disabled={desabilitado} onChange={(event) => alterar("nome", event.target.value)} placeholder="Nome completo" />
-                    </Campo>
-                    <Campo titulo="Telefone" erro={erros.telefone} dica="Opcional — informe DDD e número.">
-                      <input value={form.telefone} disabled={desabilitado} inputMode="tel" maxLength={20} onChange={(event) => alterar("telefone", event.target.value)} placeholder="(43) 90000-0000" />
-                    </Campo>
-                  </div>
                   <details className="occurrence-optional-details">
-                    <summary>Dados complementares do solicitante <small>Opcionais</small></summary>
+                    <summary>Dados do solicitante <small>Opcionais</small></summary>
                     <div className="occurrence-new-grid">
+                      <Campo titulo="Nome do solicitante"><input value={form.nome} disabled={desabilitado} onChange={(event) => alterar("nome", event.target.value)} placeholder="Nome completo" /></Campo>
+                      <Campo titulo="Telefone" erro={erros.telefone}><input value={form.telefone} disabled={desabilitado} inputMode="tel" maxLength={20} onChange={(event) => alterar("telefone", event.target.value)} placeholder="(43) 90000-0000" /></Campo>
                       <Campo titulo="CPF" erro={erros.cpf}><input value={form.cpf} disabled={desabilitado} maxLength={14} inputMode="numeric" onChange={(event) => alterar("cpf", formatCpf(event.target.value))} placeholder="000.000.000-00" /></Campo>
                       <Campo titulo="RG"><input value={form.rg} disabled={desabilitado} onChange={(event) => alterar("rg", event.target.value)} /></Campo>
                       <Campo titulo="Endereço informado"><input value={form.enderecoSolicitante} disabled={desabilitado} onChange={(event) => alterar("enderecoSolicitante", event.target.value)} placeholder="Rua e número" /></Campo>
@@ -780,7 +853,7 @@ export default function OcorrenciaNova({ profile }: { profile: PerfilFuncional }
                         {TIPOS_REGISTRO.map((tipo) => <option key={tipo.valor} value={tipo.valor}>{tipo.rotulo}</option>)}
                       </select>
                     </Campo>
-                    <Campo titulo="Código operacional" dica="Opcional."><input value={form.codigoOperacional} disabled={desabilitado} onChange={(event) => alterar("codigoOperacional", event.target.value)} placeholder="Código da ocorrência" /></Campo>
+                    <Campo titulo="Código operacional (opcional)"><input value={form.codigoOperacional} disabled={desabilitado} onChange={(event) => alterar("codigoOperacional", event.target.value)} placeholder="Código da ocorrência" /></Campo>
                     <Campo titulo="Local da ocorrência" erro={erros.local}>
                       <input value={form.local} disabled={desabilitado} autoComplete="street-address" onChange={(event) => alterar("local", event.target.value)} placeholder="Rua, avenida ou estrada" />
                     </Campo>
@@ -790,9 +863,8 @@ export default function OcorrenciaNova({ profile }: { profile: PerfilFuncional }
                     <Campo titulo="Data e hora do início" erro={erros.inicio}>
                       <input type="datetime-local" value={form.inicio} disabled={desabilitado} onChange={(event) => alterar("inicio", event.target.value)} />
                     </Campo>
-                    <div className="occurrence-quick-now-wrap"><button type="button" className="occurrences-clear-button occurrence-new-now" disabled={desabilitado} onClick={() => alterar("inicio", paraCampoDataHora(new Date()))}><Clock size={15} aria-hidden="true" /> Agora</button></div>
                   </div>
-                  <Campo titulo="Coordenadas (latitude, longitude)" dica="Opcional — exemplo: -23.3,-46.3." erro={erros.coordenadas} bloco>
+                  <Campo titulo="Coordenadas (opcional)" erro={erros.coordenadas} bloco>
                     <span className="occurrence-new-coords">
                       <input value={form.coordenadas} inputMode="decimal" disabled={desabilitado} onChange={(event) => { alterar("coordenadas", event.target.value); setPosicaoNota(""); }} placeholder="-23.3,-46.3" />
                       <button type="button" className="occurrences-advanced-toggle" disabled={desabilitado || buscandoPosicao} onClick={usarPosicaoAtual}>
@@ -810,34 +882,32 @@ export default function OcorrenciaNova({ profile }: { profile: PerfilFuncional }
               {etapa.id === "equipe" ? (
                 <Passo etapa={etapa}>
                   <div className="occurrence-new-grid">
-                    <Campo titulo="Identificação do BO externo" dica="Opcional — digite apenas a identificação se existir; não há integração externa.">
+                    <Campo titulo="Identificação do BO externo (se houver)">
                       <input value={form.numeroBo} disabled={desabilitado} maxLength={50} onChange={(event) => alterar("numeroBo", event.target.value)} placeholder="Número ou identificação" />
                     </Campo>
                   </div>
-                  <Aviso>A identificação do BO externo é digitada manualmente; o app não consulta nem integra outro sistema.</Aviso>
-                  <EquipeCampos profile={profile} oficiais={oficiais} responsavelId={form.responsavelId} apoioId={form.apoioId} carregando={carregandoOficiais} erros={erros} disabled={desabilitado} onResponsavel={(id) => { alterar("responsavelId", id); if (form.apoioId === id) alterar("apoioId", ""); }} onApoio={(id) => alterar("apoioId", id)} />
+                  <EquipeCampos profile={profile} oficiais={oficiais} responsavelId={form.responsavelId} apoioId={form.apoioId} carregando={carregandoOficiais} erros={erros} disabled={desabilitado} onResponsavel={(id) => alterar("responsavelId", id)} onApoio={(id) => alterar("apoioId", id)} />
                 </Passo>
               ) : null}
 
               {etapa.id === "envolvidos" ? (
-                <Passo etapa={etapa}>
+                <Passo etapa={etapa} mostrarTitulo={false}>
                   <OccurrencePersonEditor envolvidos={envolvidos} onChange={setEnvolvidos} disabled={desabilitado} />
-                  <Aviso>A assinatura é opcional e fica vinculada à pessoa. Ela não representa, por si só, concordância com o relato integral do BO.</Aviso>
+                  <Aviso>Assinatura opcional; não representa concordância com o relato do BO.</Aviso>
                 </Passo>
               ) : null}
 
               {etapa.id === "relato" ? (
                 <Passo etapa={etapa}>
-                  <Campo titulo="Observações e relato dos fatos" erro={erros.relato} dica="Mínimo de 10 caracteres. Registre fatos, providências e encaminhamentos.">
+                  <Campo titulo="Observações e relato dos fatos" erro={erros.relato} dica="Mínimo de 10 caracteres. Se outra autoridade atuou, identifique-a aqui.">
                     <textarea rows={8} value={form.relato} disabled={desabilitado} onChange={(event) => alterar("relato", event.target.value)} placeholder="Acionamento, o que foi encontrado, providências tomadas e desfecho." />
                   </Campo>
                   <p className="occurrence-new-count">{form.relato.length.toLocaleString("pt-BR")} caracteres</p>
-                  <Aviso>Outra autoridade atuou junto? Registre no relato o órgão, a providência e o encaminhamento; não a inclua como GM na equipe.</Aviso>
                 </Passo>
               ) : null}
 
               {etapa.id === "anexos" ? (
-                <Passo etapa={etapa}>
+                <Passo etapa={etapa} mostrarTitulo={false}>
                   <OccurrenceAttachments
                     modo="completo"
                     anexos={anexos}
@@ -853,10 +923,9 @@ export default function OcorrenciaNova({ profile }: { profile: PerfilFuncional }
               {etapa.id === "revisao" ? (
                 <Passo etapa={etapa}>
                   <div className="occurrence-new-grid">
-                    <Campo titulo="Data e hora do encerramento" erro={erros.fim} dica="Obrigatória para concluir o BO completo.">
+                    <Campo titulo="Data e hora do encerramento" erro={erros.fim}>
                       <input type="datetime-local" value={form.fim} disabled={desabilitado} onChange={(event) => alterar("fim", event.target.value)} />
                     </Campo>
-                    <div className="occurrence-quick-now-wrap"><button type="button" className="occurrences-clear-button occurrence-new-now" disabled={desabilitado} onClick={() => alterar("fim", paraCampoDataHora(new Date()))}><Clock size={15} aria-hidden="true" /> Agora</button></div>
                   </div>
                   <div className="occurrence-new-review">
                     {listaRevisao.map((linha) => (
@@ -875,7 +944,7 @@ export default function OcorrenciaNova({ profile }: { profile: PerfilFuncional }
                     <span className="occurrence-selo is-neutro">BO Completo · Atendimento encerrado</span>
                     <span className="occurrence-selo is-neutro">{envolvidos.length} envolvido(s) · {anexos.length} anexo(s)</span>
                   </div>
-                  <p className="occurrence-new-privacy"><ShieldCheck size={16} aria-hidden="true" /><span>Ao concluir, o BO é gravado no servidor com equipe, envolvidos e assinaturas opcionais. Arquivos ficam no bucket privado; nada é salvo apenas neste aparelho.</span></p>
+                  <p className="occurrence-new-privacy"><ShieldCheck size={16} aria-hidden="true" /><span>Registro salvo no servidor; arquivos são privados e opcionais.</span></p>
                 </Passo>
               ) : null}
 
@@ -902,7 +971,6 @@ export default function OcorrenciaNova({ profile }: { profile: PerfilFuncional }
           </>
         )}
 
-        <footer className="occurrences-footer"><ClipboardList size={16} aria-hidden="true" /><span>Registro nativo · Persistência direta no Supabase com sessão autenticada.</span></footer>
       </div>
     </main>
   );

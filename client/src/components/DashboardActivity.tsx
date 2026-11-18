@@ -82,6 +82,11 @@ function statusTone(value: string | null | undefined) {
   return "";
 }
 
+function severityTone(value: string | null | undefined) {
+  const normalized = (value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLocaleLowerCase("pt-BR");
+  return ["baixa", "media", "alta", "critica"].includes(normalized) ? `is-${normalized}` : "is-unset";
+}
+
 function occurrenceNumber(item: OccurrencePreview) {
   return item.numero_ocorrencia?.trim() || item.numero_temporario?.trim() || null;
 }
@@ -158,7 +163,7 @@ function OccurrenceCard({ item, onOpen }: { item: OccurrencePreview; onOpen: (re
         <div className="dashboard-record-main dashboard-record-rich-main">
           <div className="dashboard-record-titleline dashboard-occurrence-titleline">
             <strong>{type}</strong>
-            <span className="dashboard-severity-chip">Gravidade · {severity}</span>
+            <span className={`dashboard-severity-chip ${severityTone(item.gravidade)}`}>Gravidade · {severity}</span>
             <span className={`dashboard-status ${statusTone(item.cancelado_em ? "cancelled" : item.status)}`}>{status}</span>
           </div>
           <div className={`dashboard-record-summary-line ${number ? "" : "is-time-only"}`}>

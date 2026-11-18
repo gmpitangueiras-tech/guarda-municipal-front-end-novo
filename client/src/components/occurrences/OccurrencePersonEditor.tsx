@@ -96,7 +96,6 @@ export default function OccurrencePersonEditor({
         <span className="occurrence-people-icon"><UsersRound size={19} aria-hidden="true" /></span>
         <div>
           <h3>Pessoas relacionadas à ocorrência</h3>
-          <p>Equipe da Guarda e pessoas civis são registradas separadamente. O cadastro de envolvidos é opcional.</p>
         </div>
         <span className="occurrence-people-count" aria-label={`${envolvidos.length} envolvidos`}>
           {envolvidos.length}
@@ -134,7 +133,7 @@ export default function OccurrencePersonEditor({
           ))}
         </ul>
       ) : (
-        <p className="occurrence-people-empty">Nenhum envolvido cadastrado. Se houver pessoas relacionadas ao fato, cadastre cada uma individualmente.</p>
+        <p className="occurrence-people-empty">Nenhum envolvido adicionado.</p>
       )}
 
       <div className="occurrence-person-form">

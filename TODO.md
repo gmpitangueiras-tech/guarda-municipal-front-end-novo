@@ -81,3 +81,12 @@
 - [x] Respeitar o limite do bucket (1 MiB servidor) e a validação RLS; reduzir imagens quando possível, recusar arquivos não aceitos antes do envio e explicar o motivo.
 - [x] Se um anexo falhar depois de o BO ser criado, informar que o BO já foi gravado, permitir tentar enviar os arquivos pendentes sem criar outro BO e nunca declarar sincronização concluída sem confirmação do servidor.
 - [x] Não alterar o repositório BO Mobile, não reescrever ocorrências históricas e não usar service-role no navegador.
+
+
+## Refinamento visual de equipe, gravidade e chips — concluído
+- [x] Guarda/Supervisor vê o GM responsável preenchido pela sessão autenticada, somente leitura; Administrador mantém a seleção de um GM ativo segundo a regra atual do backend.
+- [x] O campo GM de apoio é busca acessível por teclado, sugere apenas perfis ativos a partir de três caracteres e não oferece o GM responsável como próprio apoio.
+- [x] A equipe não repete instruções longas; campos opcionais do solicitante ficam recolhidos por padrão nos dois modos.
+- [x] Removidos rótulos/avisos redundantes e botões “Agora” desnecessários; envolvidos e anexos não repetem os títulos da etapa.
+- [x] Gravidade baixa/média/alta/crítica recebe cores semânticas mais fortes e indicação visual de seleção; situação, documento e gravidade têm bordas e fundos mais legíveis na Central, dashboard e formulário.
+- [x] Etapas ativas, cartões de modo e campos de equipe usam o azul institucional; chips de status/gravidade recebem tamanho legível e contraste suficiente.

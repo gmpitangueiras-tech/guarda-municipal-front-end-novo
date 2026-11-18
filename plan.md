@@ -2,32 +2,35 @@
 
 ## Escopo e decisões
 
-O repositório é `gmpitangueiras-tech/guarda-municipal-front-end-novo`, React/TypeScript/Vite, publicado em GitHub Pages e conectado ao Supabase `wswezvcxfljzcttpqkch`. Preservar a rota hash `#/ocorrencias/nova`, sessão autenticada, `AuthenticatedAppShell` (cabeçalho e menu fixo compartilhados) e identidade azul institucional já adotada no novo app. Não alterar o repositório ou fluxo do BO Mobile.
+O repositório é `gmpitangueiras-tech/guarda-municipal-front-end-novo`, React/TypeScript/Vite, publicado em GitHub Pages e conectado ao Supabase `wswezvcxfljzcttpqkch`. Preservar a rota hash `#/ocorrencias/nova`, sessão autenticada, `AuthenticatedAppShell` (cabeçalho e menu fixo compartilhados) e identidade azul institucional já adotada no novo app. Não alterar o repositório ou o fluxo do BO Mobile.
 
 A tela de registro começa com a escolha explícita entre **BO Rápido** e **BO Completo**, reproduzindo o fluxo do BO Mobile, mas usando componentes React acessíveis, identidade azul e os contratos server-side atuais. O modo do documento (`modo_criacao`) e a situação do atendimento (`data_hora_encerramento`) permanecem eixos distintos: um BO Rápido fica “BO incompleto / A complementar” até ser concluído; sua situação vem do servidor, não de uma inferência do modo. O BO Completo exige horário de início, horário de término e relato mínimo de 10 caracteres.
 
-Em ambos os modos, gravidade (`baixa`, `media`, `alta`, `critica`) e equipe mínima são obrigatórias. O responsável é o guarda autenticado, exceto perfis administrativos que precisam selecionar um GM ativo; o GM de apoio deve ser outro usuário ativo cadastrado. BO externo é apenas identificação manual, sem integração externa.
+Em ambos os modos, gravidade (`baixa`, `media`, `alta`, `critica`) e equipe mínima são obrigatórias. Conforme confirmado pelo usuário, Guarda/Supervisor têm o responsável pré-preenchido e bloqueado na sessão atual; Administrador continua escolhendo um GM ativo, preservando a regra do backend. O GM de apoio deve ser outro usuário ativo cadastrado e é selecionado por busca com sugestões a partir do terceiro caractere. BO externo é apenas identificação manual, sem integração externa.
 
-O modo rápido mantém os campos operacionais essenciais e aceita fotos opcionais. O completo inclui solicitante, local detalhado, BO externo, envolvidos (tipo e nome obrigatórios; CPF, telefone e observações opcionais), assinatura manuscrita opcional vinculada a cada pessoa, relato e anexos opcionais. Os dados pessoais não entram na lista operacional. Envolvidos e assinaturas são gravados dentro da transação da RPC autenticada; as imagens de assinatura ficam em tabela privada sem permissão de leitura direta para perfis autenticados, sem conteúdo na coluna legada `ocorrencias.assinaturas`. Arquivos permanecem no bucket privado `anexos`, nunca por URL pública.
+O modo rápido mantém os campos operacionais essenciais e aceita fotos opcionais. O completo inclui solicitante e contatos opcionais em seção recolhida, local detalhado, BO externo, envolvidos (tipo e nome obrigatórios; CPF, telefone e observações opcionais), assinatura manuscrita opcional vinculada a cada pessoa, relato e anexos opcionais. Os dados pessoais não entram na lista operacional. Envolvidos e assinaturas são gravados dentro da transação da RPC autenticada; as imagens de assinatura ficam em tabela privada sem permissão de leitura direta para perfis autenticados, sem conteúdo na coluna legada `ocorrencias.assinaturas`. Arquivos permanecem no bucket privado `anexos`, nunca por URL pública.
 
 A migration Supabase é aditiva: estende a RPC existente sem mudar sua assinatura pública nem remover dados, cria uma tabela privada de assinaturas e autorização estreita para anexos do autor no novo BO logo após a criação, e conserva as policies de leitura atuais. A aplicação web não usa service-role. O bucket privado existente limita cada arquivo a 1 MiB; políticas RLS também validam tamanho e MIME por modo, imagens são reduzidas quando necessário, e tipos/tamanhos não aceitos são recusados antes do envio. Não alterar o limite nem a allowlist global do bucket compartilhado com o BO Mobile.
 
 ## Design
 
-- **Movimento visual:** interface operacional cívica, continuidade do shell e da identidade azul institucional (`#173f68`), sem retornar ao verde do fluxo legado.
+- **Identidade visual:** azul institucional (`#173f68`) no shell, passos, foco e cartões; gravidade, situação e documento usam tons semânticos de contraste mais forte, não apenas pastéis.
 - **Princípios:** foco no trabalho em campo, hierarquia curta, dados pessoais fora da listagem, mensagens honestas sobre o que foi salvo e controles confortáveis para toque.
-- **Layout:** etapas enxutas, cartões de escolha dos modos, navegação progressiva e resumo final; primeiro celular, com conteúdo fluido em telas maiores.
-- **Acessibilidade:** rótulos explícitos, erros associados aos campos, teclado e ponteiro suportados, assinatura em canvas de toque, fontes legíveis e alvos de ação de pelo menos 44px.
+- **Layout:** escolha enxuta dos modos, navegação progressiva, campos opcionais recolhidos e eliminação de instruções repetidas; primeiro celular, com conteúdo fluido em telas maiores.
+- **Acessibilidade:** rótulos explícitos, erros associados aos campos, teclado e ponteiro suportados, autocomplete de apoio acessível, assinatura em canvas de toque, fontes legíveis e alvos de ação de pelo menos 44px.
 - **Interação:** estados do documento/atendimento continuam vindo do servidor; imagens selecionadas mostram nome, tipo e tamanho; anexos podem ser removidos antes de salvar; falha parcial de upload informa que o BO já foi gravado e não cria ocorrência duplicada ao tentar novamente.
-- **Voz:** direta e operacional. Exemplos: “Escolha como registrar” / “A assinatura é opcional e ficará vinculada a esta pessoa.”
+- **Voz:** direta e operacional, sem dicas duplicadas; solicitante opcional não ocupa espaço até ser expandido.
 
 ## Estrutura do projeto
 
-- `client/src/pages/OcorrenciaNova.tsx`: seletor de modo e etapas de registro, usando o perfil e shell já existentes.
+- `client/src/pages/OcorrenciaNova.tsx`: seletor de modo, equipe e etapas de registro sob o shell existente.
+- `client/src/pages/Occurrences.tsx`: cards, filtros e conclusão de BO com tons de gravidade.
+- `client/src/components/DashboardActivity.tsx`: cards do dashboard com selos semânticos de gravidade/status.
 - `client/src/components/occurrences/SignaturePad.tsx`: captura opcional de assinatura para cada envolvido.
+- `client/src/components/occurrences/OccurrencePersonEditor.tsx`: cadastro enxuto de pessoas relacionadas e assinaturas opcionais.
 - `client/src/components/occurrences/OccurrenceAttachments.tsx`: seleção e apresentação de anexos locais, validação do limite do bucket e envio privado.
 - `client/src/lib/ocorrencias.ts`: tipos de envolvidos/assinaturas, chamada da RPC de criação e persistência de anexos no Supabase.
-- `client/src/index.css`: estilos novos escopados ao registro, alinhados ao azul institucional e às regras mobile.
+- `client/src/index.css`: estilos novos escopados ao azul institucional e às regras mobile, incluindo cards/selos de maior contraste e autocomplete.
 - `supabase/migrations/20261118_bo_rapido_completo.sql`: validação transacional de envolvidos, tabela restrita de assinaturas e policies mínimas de MIME/tamanho para upload privado de anexos.
 - `client/src/App.tsx` e `client/src/components/AuthenticatedAppShell.tsx`: manter a rota e o shell existente; sem alteração de navegação ou identidade compartilhada nesta entrega.
 
@@ -36,5 +39,6 @@ A migration Supabase é aditiva: estende a RPC existente sem mudar sua assinatur
 1. Refatorar o registro nativo em dois modos explícitos, mantendo gravidade e equipe obrigatórias e a separação entre documento e situação.
 2. Implementar dados de envolvidos e captura manuscrita opcional no modo completo; permitir anexos opcionais no rápido e no completo, com persistência privada e mensagens de estado sem duplicar BO.
 3. Aplicar a migration aditiva à RPC/policies do Supabase, usando o cliente autenticado e respeitando as regras RLS e o limite atual do bucket.
-4. Atualizar os critérios do projeto, executar o build Vite e revisar o diff sem criar registros operacionais de teste; preservar `bomobile` intacto.
-5. Preparar a entrega no GitHub conforme a autorização existente de publicação direta do frontend novo.
+4. Refinar a equipe para pré-preencher/bloquear o responsável da sessão Guarda/Supervisor, manter seleção de GM pelo Administrador e buscar apoio por autocomplete acessível após três caracteres.
+5. Remover repetições e dar mais contraste aos cards e chips de gravidade, situação e documento nas telas do formulário, da Central e do dashboard; compilar e verificar o diff sem criar registros operacionais de teste.
+6. Preservar `bomobile` intacto e preparar a entrega no GitHub conforme a autorização existente de publicação direta do frontend novo.

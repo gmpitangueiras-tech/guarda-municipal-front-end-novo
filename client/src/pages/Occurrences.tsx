@@ -34,6 +34,7 @@ import {
   formatarDuracao,
   formatarRelativo,
   GRAVIDADES,
+  TOM_GRAVIDADE,
   gravarOrdenacao,
   lerEliminarAviso,
   lerFiltroDaUrl,
@@ -77,6 +78,9 @@ const DOCUMENTO_TOM: Record<DocumentoOcorrencia, string> = {
 
 const tomSituacao = (valor: SituacaoOcorrencia): string => SITUACAO_TOM[valor] ?? "neutro";
 const tomDocumento = (valor: DocumentoOcorrencia): string => DOCUMENTO_TOM[valor] ?? "neutro";
+const tomGravidade = (valor: string): string => Object.prototype.hasOwnProperty.call(TOM_GRAVIDADE, valor)
+  ? TOM_GRAVIDADE[valor as GravidadeSlug]
+  : "neutro";
 
 function linhaLocal(item: OcorrenciaItem): string {
   const partes = [item.local ?? item.rodovia, item.bairro].filter((valor): valor is string => Boolean(valor));
@@ -154,7 +158,7 @@ function CartaoOcorrencia({ item, onAbrir }: { item: OcorrenciaItem; onAbrir: (i
             ) : null}
             {item.origem ? <span className="occurrence-card-origin">{item.origem}</span> : null}
             {item.gravidade !== "nao_informado" ? (
-              <span className="occurrence-severity">Gravidade {item.gravidade_rotulo}</span>
+              <span className={`occurrence-severity is-${tomGravidade(item.gravidade)}`}>Gravidade {item.gravidade_rotulo}</span>
             ) : null}
             {duracao ? (
               <span className="occurrence-duration">
@@ -536,7 +540,7 @@ function FormularioConcluirBo({
               <button
                 key={opcao.valor}
                 type="button"
-                className={`occurrence-severity-button${gravidade === opcao.valor ? " is-active" : ""}`}
+                className={`occurrence-severity-button is-${TOM_GRAVIDADE[opcao.valor]}${gravidade === opcao.valor ? " is-active" : ""}`}
                 aria-pressed={gravidade === opcao.valor}
                 onClick={() => setGravidade(opcao.valor)}
               >
