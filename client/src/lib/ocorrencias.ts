@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { MAX_ANEXO_BYTES, mimetypeAnexo } from "@/lib/attachmentPolicy";
 
 /**
  * Camada de dados de ocorrências.
@@ -640,11 +641,34 @@ export type DadosNovoRegistro = {
   nome_solicitante?: string | null;
   telefone_solicitante?: string | null;
   cpf_solicitante?: string | null;
+  rg_solicitante?: string | null;
+  endereco_solicitante?: string | null;
+  bairro_solicitante?: string | null;
+  codigo_municipal?: string | null;
+  complemento?: string | null;
   identificacao_adicional?: string | null;
   codigo_operacional?: string | null;
   modo_criacao: "completo" | "rapido";
   responsavel_id?: string | null;
   apoio_id: string;
+};
+
+export type EnvolvidoNovo = {
+  id: string;
+  tipo: "autor" | "vitima" | "testemunha" | "solicitante" | "outro";
+  nome_completo: string;
+  cpf: string | null;
+  telefone: string | null;
+  observacoes: string | null;
+  assinatura_data_url?: string | null;
+};
+
+export type TipoAnexoOcorrencia = "image" | "video" | "document";
+
+export type AnexoRascunho = {
+  id: string;
+  file: File;
+  tipo: TipoAnexoOcorrencia;
 };
 
 export type ResultadoRegistro = {
@@ -663,9 +687,21 @@ export type ResultadoConclusao = {
   documento: string;
 };
 
-export async function registrarOcorrencia(dados: DadosNovoRegistro): Promise<ResultadoRegistro> {
+export async function registrarOcorrencia(
+  dados: DadosNovoRegistro,
+  envolvidos: EnvolvidoNovo[] = [],
+): Promise<ResultadoRegistro> {
+  const dadosComFilhos = {
+    ...dados,
+    envolvidos: envolvidos.map(({ assinatura_data_url: _assinatura, ...envolvido }) => envolvido),
+    assinaturas: envolvidos.flatMap((envolvido) =>
+      envolvido.assinatura_data_url
+        ? [{ envolvido_id: envolvido.id, assinatura_data_url: envolvido.assinatura_data_url }]
+        : [],
+    ),
+  };
   const resposta = objetoBruto(
-    await rpcJson<unknown>("gm_registrar_ocorrencia", { p_dados: dados, p_equipe: [] }),
+    await rpcJson<unknown>("gm_registrar_ocorrencia", { p_dados: dadosComFilhos, p_equipe: [] }),
   );
   return {
     id: texto(resposta.id),
@@ -674,6 +710,87 @@ export async function registrarOcorrencia(dados: DadosNovoRegistro): Promise<Res
     gravidade: texto(resposta.gravidade),
     status: texto(resposta.status),
   };
+}
+
+export type ResultadoUploadAnexos = {
+  enviados: string[];
+  falhas: Array<{ id: string; mensagem: string }>;
+};
+
+function uuidDeArquivo(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function extensaoSegura(nome: string): string {
+  const correspondencia = nome.toLowerCase().match(/\.([a-z0-9]{1,8})$/);
+  return correspondencia?.[1] ?? "bin";
+}
+
+function nomeSeguroArquivo(nome: string): string {
+  const limpo = nome.normalize("NFC").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 255);
+  return limpo || "anexo";
+}
+
+/** Upload privado e metadata; nunca converte o caminho do Storage em URL pública. */
+export async function enviarAnexosOcorrencia(parametros: {
+  ocorrenciaId: string;
+  perfilId: string;
+  modo: "rapido" | "completo";
+  anexos: AnexoRascunho[];
+}): Promise<ResultadoUploadAnexos> {
+  const resultado: ResultadoUploadAnexos = { enviados: [], falhas: [] };
+  if (!supabase) {
+    return {
+      enviados: [],
+      falhas: parametros.anexos.map(({ id }) => ({ id, mensagem: "Serviço de armazenamento indisponível." })),
+    };
+  }
+
+  for (const anexo of parametros.anexos) {
+    if (anexo.file.size > MAX_ANEXO_BYTES) {
+      resultado.falhas.push({ id: anexo.id, mensagem: "O arquivo excede o limite de 1 MiB." });
+      continue;
+    }
+    const mime = mimetypeAnexo(anexo.file);
+    if (!mime) {
+      resultado.falhas.push({ id: anexo.id, mensagem: "O formato deste arquivo não é aceito para o modo selecionado." });
+      continue;
+    }
+
+    const caminho = `${parametros.perfilId}/${parametros.ocorrenciaId}/${uuidDeArquivo()}.${extensaoSegura(anexo.file.name)}`;
+    const { error: erroUpload } = await supabase.storage.from("anexos").upload(caminho, anexo.file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: mime,
+    });
+    if (erroUpload) {
+      resultado.falhas.push({ id: anexo.id, mensagem: "O armazenamento não aceitou o arquivo. Confira a conexão e tente novamente." });
+      continue;
+    }
+
+    const { error: erroMetadata } = await supabase.from("anexos").insert({
+      ocorrencia_id: parametros.ocorrenciaId,
+      nome_arquivo: nomeSeguroArquivo(anexo.file.name),
+      tipo_arquivo: anexo.tipo,
+      tamanho: anexo.file.size,
+      url: caminho,
+      url_thumb: null,
+      mime_type: mime,
+      metadata: { modo_criacao: parametros.modo, armazenamento: "bucket_privado" },
+      criado_por: parametros.perfilId,
+    });
+
+    if (erroMetadata) {
+      await supabase.storage.from("anexos").remove([caminho]);
+      resultado.falhas.push({ id: anexo.id, mensagem: "Não foi possível registrar o anexo. O arquivo temporário foi removido; tente novamente." });
+      continue;
+    }
+    resultado.enviados.push(anexo.id);
+  }
+
+  return resultado;
 }
 
 export async function concluirBO(parametros: {
@@ -719,7 +836,7 @@ export async function loadOfficerOptions(): Promise<OfficerOption[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("usuarios")
-    .select("id,apelido,perfil")
+    .select("id,apelido,nome_completo,matricula")
     .eq("status", "ativo")
     .in("perfil", ["guarda", "supervisor"])
     .order("apelido");
@@ -731,7 +848,12 @@ export async function loadOfficerOptions(): Promise<OfficerOption[]> {
       .trim()
       .replace(/^GM(?:\s+|$)/i, "")
       .trim();
-    return id && apelido ? [{ id, label: `GM ${apelido}` }] : [];
+    const nome = texto(registro.nome_completo).trim();
+    const matricula = texto(registro.matricula).trim();
+    const identificacao = apelido || nome;
+    return id && identificacao
+      ? [{ id, label: `GM ${identificacao}${matricula ? ` · Mat. ${matricula}` : ""}` }]
+      : [];
   });
 }
 

@@ -54,9 +54,30 @@
 - [x] Cada cartão mostra tipo, número do BO ou temporário, local, data/hora, status textual, gravidade, GM responsável e de apoio quando disponíveis, estado e tentativas de sincronização e miniatura privada quando existir.
 - [x] A lista não mostra CPF, nomes completos de envolvidos ou outros dados pessoais; nomes operacionais de GM são apelidos, nunca nomes completos por fallback.
 - [x] As miniaturas continuam em bucket privado, carregadas com a sessão autenticada e renderizadas apenas por URL blob temporária; nenhuma URL pública de armazenamento é criada.
-- [x] A consulta da interface filtra Guardas para registros próprios ou com participação ativa; Supervisor/Administrador podem ver a equipe. As políticas RLS existentes foram mantidas sem alteração.
+- [x] A consulta da interface filtra Guardas para registros próprios ou com participação ativa; Supervisor/Administrador podem ver a equipe. As policies de leitura da lista permanecem separadas e inalteradas; as permissões de escrita de anexos são ampliadas apenas pela migration aditiva deste fluxo.
 - [x] Atualização e falha de rede não apagam a lista já carregada; estado offline e pendência de sincronização são textuais, sem expor mensagens livres de erro ou prometer escrita/sincronização offline que esta etapa não implementa.
 - [x] O detalhe desta etapa é limitado a resumo operacional não sensível; dados de envolvidos, anexos detalhados, histórico completo, aprovações e retificações não são consultados nem exibidos nesta tela e não são apresentados como funcionalidades concluídas.
-- [x] “Nova ocorrência” continua abrindo o fluxo de criação operacional existente enquanto criação/edição e persistência offline não forem entregues nesta tela.
-- [x] A tela não altera tabelas, políticas RLS ou registros Supabase; consulta somente colunas necessárias ao cartão e à paginação.
-- [ ] Alinhar e aprovar uma migration RLS server-side para separar Guarda (criou/participação ativa), Supervisor (equipe) e Administrador (global), validando a compatibilidade com o aplicativo legado e a definição de “equipe”.
+- [x] O antigo atalho de “Nova ocorrência” não leva ao BO Mobile; neste incremento, ele foi substituído pela escolha nativa entre BO Rápido e BO Completo, descrita nas seções abaixo.
+- [x] A Central de Ocorrências continua consultando apenas as colunas necessárias ao cartão e à paginação. O novo fluxo de gravação é separado, usa a RPC autenticada e a migration aditiva, e não reescreve registros históricos.
+- [ ] Alinhar e aprovar uma migration RLS server-side geral para separar Guarda (criou/participação ativa), Supervisor (equipe) e Administrador (global), validando a compatibilidade com o aplicativo legado e a definição de “equipe”.
+
+## BO Rápido nativo — concluído
+- [x] Ao abrir “Nova ocorrência”, oferecer escolha clara entre BO Rápido e BO Completo, mantendo o cabeçalho compartilhado, menu fixo e identidade azul institucional; nenhum fluxo deve navegar ao BO Mobile.
+- [x] No BO Rápido, gravidade `baixa`, `media`, `alta` ou `critica`, GM responsável e GM de apoio ativo diferente são obrigatórios; o atendimento registra tipo, início, local e relato; a forma de solicitação corresponde ao fluxo rápido do BO Mobile.
+- [x] O BO Rápido é criado como `modo_criacao='rapido'` e permanece documento “BO incompleto / A complementar” até ser concluído; a situação do atendimento continua derivada independentemente pelo servidor.
+- [x] Permitir selecionar fotos opcionais no BO Rápido; arquivos ficam no bucket privado `anexos`, nunca em link público, e não são obrigatórios para registrar.
+
+## BO Completo nativo — concluído
+- [x] Preservar o fluxo completo do BO Mobile: origem/solicitante, dados do evento e local, equipe, envolvidos, relato, anexos e revisão com horário de término.
+- [x] Gravidade e equipe mínima são obrigatórias; o responsável é o guarda autenticado ou, para administrador, um GM ativo escolhido; o GM de apoio é outro guarda/supervisor ativo já cadastrado.
+- [x] O relato completo exige pelo menos 10 caracteres; o encerramento é obrigatório e não pode anteceder o início; o BO externo, quando existir, é digitado manualmente sem integração externa.
+- [x] Permitir cadastrar zero ou mais envolvidos. Para cada um, tipo e nome completo são obrigatórios; CPF, telefone e observações são opcionais. Dados pessoais permanecem fora da listagem operacional.
+- [x] Oferecer assinatura manuscrita opcional para cada envolvido, vinculada ao ID daquela pessoa e salva com o registro; a assinatura não é requisito para concluir. O conteúdo da assinatura fica em tabela sem leitura direta por clientes autenticados.
+- [x] Permitir anexos opcionais (imagem, vídeo ou PDF) no BO Completo; ausência de anexos nunca impede o salvamento.
+
+## Persistência segura de filhos e mídia — concluído
+- [x] A gravação server-side salva ocorrência, equipe e envolvidos pela RPC; imagens de assinatura manuscrita são gravadas na tabela privada sem SELECT autenticado, mantendo `ocorrencias.assinaturas` intacta para compatibilidade.
+- [x] A autorização de upload/metadados é restrita ao criador ativo do novo registro e ao caminho vinculado ao UUID da ocorrência; Storage RLS valida MIME conforme o modo e o tamanho real, sem ampliar policies de leitura nem criar URL pública.
+- [x] Respeitar o limite do bucket (1 MiB servidor) e a validação RLS; reduzir imagens quando possível, recusar arquivos não aceitos antes do envio e explicar o motivo.
+- [x] Se um anexo falhar depois de o BO ser criado, informar que o BO já foi gravado, permitir tentar enviar os arquivos pendentes sem criar outro BO e nunca declarar sincronização concluída sem confirmação do servidor.
+- [x] Não alterar o repositório BO Mobile, não reescrever ocorrências históricas e não usar service-role no navegador.
