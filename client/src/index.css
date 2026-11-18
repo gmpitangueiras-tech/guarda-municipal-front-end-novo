@@ -2144,3 +2144,51 @@ input:focus-visible {
   max-width: 32%;
   font-size: 8px;
 }
+
+
+/* Identidade do GM e conectividade no cabeçalho mobile-first. */
+.dashboard-theme-blue .dashboard-user-presence {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: #355a7e;
+}
+.dashboard-user-avatar-wrap {
+  position: relative;
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+}
+.dashboard-theme-blue .dashboard-user-avatar {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  overflow: hidden;
+  place-items: center;
+  color: #335f88;
+  border: 1px solid #d9e5f0;
+  border-radius: 50%;
+  background: #e8f0f7;
+}
+.dashboard-user-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.dashboard-user-presence-dot {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 12px;
+  height: 12px;
+  box-sizing: border-box;
+  border: 2px solid #fff;
+  border-radius: 50%;
+}
+.dashboard-user-avatar-wrap.is-online .dashboard-user-presence-dot { background: #16a34a; box-shadow: 0 0 0 1px rgba(22, 163, 74, .12); }
+.dashboard-user-avatar-wrap.is-offline .dashboard-user-presence-dot { background: #dc2626; box-shadow: 0 0 0 1px rgba(220, 38, 38, .12); }
+.dashboard-theme-blue .dashboard-user-presence-label { color: #476783; font-size: 10px; font-weight: 760; white-space: nowrap; }
+@media (max-width: 420px) {
+  .dashboard-theme-blue .dashboard-user-presence { gap: 5px; }
+  .dashboard-user-avatar-wrap,
+  .dashboard-theme-blue .dashboard-user-avatar { width: 35px; height: 35px; }
+  .dashboard-theme-blue .dashboard-user-presence-label { font-size: 9px; }
+}

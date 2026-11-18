@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ArrowDownRight,
   ArrowRight,
   Bell,
   CheckCheck,
@@ -9,11 +8,13 @@ import {
   RefreshCw,
   Shield,
   ShieldCheck,
+  UserRound,
   X,
 } from "lucide-react";
 import type { PerfilFuncional } from "@/lib/auth";
 import DashboardBottomNav from "@/components/DashboardBottomNav";
 import DashboardActivity from "@/components/DashboardActivity";
+import { supabase, supabaseUrl } from "@/lib/supabase";
 import {
   isManagementRole,
   loadDashboardData,
@@ -54,6 +55,58 @@ function notificationDestination(item: DashboardNotification) {
 function shortName(profile: PerfilFuncional) {
   const value = profile.apelido?.trim() || profile.nome_completo?.trim() || "Guarda Municipal";
   return value.split(/\s+/)[0];
+}
+
+function profilePhotoPath(value: string | null) {
+  if (!value || !supabaseUrl) return null;
+  try {
+    const photoUrl = new URL(value);
+    if (photoUrl.origin !== new URL(supabaseUrl).origin) return null;
+    const match = photoUrl.pathname.match(/\/storage\/v1\/object\/(?:public|authenticated|sign)\/gm-avatars\/(.+)$/i);
+    if (!match) return null;
+    const segments = match[1].split("/").map((part) => decodeURIComponent(part));
+    if (segments.length < 1 || segments.some((part) => !part || part === "." || part === ".." || part.includes("/") || part.includes("\\") || part.includes("\0"))) return null;
+    return segments.join("/");
+  } catch {
+    return null;
+  }
+}
+
+function ProfileAvatar({ photoUrl }: { photoUrl: string | null }) {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const activeImageUrl = useRef<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setImageUrl(null);
+    const path = profilePhotoPath(photoUrl);
+    if (!supabase || !path) return () => { cancelled = true; };
+
+    void supabase.storage.from("gm-avatars").download(path).then(({ data, error }) => {
+      if (error || !data) return;
+      const localUrl = URL.createObjectURL(data);
+      if (cancelled) {
+        URL.revokeObjectURL(localUrl);
+        return;
+      }
+      activeImageUrl.current = localUrl;
+      setImageUrl(localUrl);
+    }).catch(() => {
+      // Se a imagem não estiver disponível, o avatar permanece com o ícone institucional.
+    });
+
+    return () => {
+      cancelled = true;
+      if (activeImageUrl.current) URL.revokeObjectURL(activeImageUrl.current);
+      activeImageUrl.current = null;
+    };
+  }, [photoUrl]);
+
+  return (
+    <span className="dashboard-user-avatar" aria-hidden="true">
+      {imageUrl ? <img src={imageUrl} alt="" /> : <UserRound size={19} />}
+    </span>
+  );
 }
 
 function NotificationPanel({
@@ -256,9 +309,6 @@ export default function Dashboard({ profile, onSignOut }: DashboardProps) {
           <span><strong>Guarda Municipal</strong><small>Pitangueiras — PR</small></span>
         </a>
         <div className="dashboard-topbar-actions">
-          <span className={`dashboard-connection ${isOnline ? "is-online" : "is-offline"}`}>
-            <i aria-hidden="true" />{isOnline ? "Conectado" : "Sem conexão"}
-          </span>
           <div className="dashboard-notification-anchor" ref={notificationRef}>
             <button
               className={`dashboard-bell ${notificationsOpen ? "is-open" : ""}`}
@@ -281,11 +331,15 @@ export default function Dashboard({ profile, onSignOut }: DashboardProps) {
                 onToggle={toggleNotification}
                 onOpen={openNotification}
               />
-            )}
+              )}
+            </div>
+          <div className="dashboard-user-presence" role="status" aria-label={`Modo ${isOnline ? "online" : "offline"}`}>
+            <span className={`dashboard-user-avatar-wrap ${isOnline ? "is-online" : "is-offline"}`}>
+              <ProfileAvatar photoUrl={profile.foto_url} />
+              <i className="dashboard-user-presence-dot" aria-hidden="true" />
+            </span>
+            <span className="dashboard-user-presence-label">{isOnline ? "Online" : "Offline"}</span>
           </div>
-          <button className="dashboard-signout" type="button" onClick={() => void onSignOut()}>
-            Sair <ArrowDownRight size={15} aria-hidden="true" />
-          </button>
         </div>
       </header>
 
