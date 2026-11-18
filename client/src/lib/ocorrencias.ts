@@ -465,12 +465,132 @@ export const FORMAS_SOLICITACAO = [
   "Diretamente com a ocorrência",
 ] as const;
 
+/**
+ * Tipos oferecidos no formulário de registro.
+ *
+ * Cada rótulo foi conferido contra `gm_rotulo('tipo', slug)` no servidor: um
+ * slug fora do dicionário volta em caixa-alta sem acento ("Atencao Local"),
+ * então o formulário repete exatamente essa string — lista e detalhe nunca
+ * podem mostrar nome diferente do que o guarda escolheu aqui. `acidente_transito`
+ * ficou de fora de propósito: é sinônimo de `acidente`, que o servidor já
+ * traduz como "Acidente de trânsito".
+ */
+export const TIPOS_REGISTRO: Array<{ valor: string; rotulo: string }> = [
+  { valor: "furto", rotulo: "Furto" },
+  { valor: "roubo", rotulo: "Roubo" },
+  { valor: "perturbacao", rotulo: "Perturbação do sossego" },
+  { valor: "ameaca", rotulo: "Ameaça" },
+  { valor: "lesao_corporal", rotulo: "Lesão corporal" },
+  { valor: "violencia_domestica", rotulo: "Violência doméstica" },
+  { valor: "acidente", rotulo: "Acidente de trânsito" },
+  { valor: "vandalismo", rotulo: "Vandalismo" },
+  { valor: "dano_ao_patrimonio", rotulo: "Dano ao patrimônio" },
+  { valor: "incendio", rotulo: "Incêndio" },
+  { valor: "desaparecimento", rotulo: "Pessoa desaparecida" },
+  { valor: "atendimento_social", rotulo: "Atendimento social" },
+  { valor: "abandono_de_animal", rotulo: "Abandono de animal" },
+  { valor: "morte", rotulo: "Morte" },
+  { valor: "atencao_local", rotulo: "Atencao Local" },
+  { valor: "vigilancia_local", rotulo: "Vigilancia Local" },
+  { valor: "apoio_a_autoridade", rotulo: "Apoio A Autoridade" },
+  { valor: "autoridade_presente", rotulo: "Autoridade Presente" },
+  { valor: "aparecimento_objeto", rotulo: "Aparecimento Objeto" },
+  { valor: "outro", rotulo: "Outro (não classificado)" },
+];
+
+/** Órgão do BO externo: grava só o código. Não existe integração com a PC. */
+export const ORGAOS_BO: Array<{ valor: string; rotulo: string }> = [
+  { valor: "PC", rotulo: "PC · Polícia Civil" },
+  { valor: "PM", rotulo: "PM · Polícia Militar" },
+  { valor: "PRF", rotulo: "PRF · Polícia Rodoviária Federal" },
+  { valor: "GCM", rotulo: "GCM · Guarda Municipal" },
+];
+
 export const GRAVIDADES: Array<{ valor: GravidadeSlug; rotulo: string }> = [
   { valor: "baixa", rotulo: "Baixa" },
   { valor: "media", rotulo: "Média" },
   { valor: "alta", rotulo: "Alta" },
   { valor: "critica", rotulo: "Crítica" },
 ];
+
+/** Tom de cada gravidade no formulário: slate · âmbar · laranja · vermelho. */
+export const TOM_GRAVIDADE: Record<GravidadeSlug, string> = {
+  baixa: "slate",
+  media: "ambar",
+  alta: "laranja",
+  critica: "vermelho",
+};
+
+/* ------------------------------------------------------------------ *
+ * Coordenadas: texto livre do guarda -> par numérico aceito pelo banco.
+ * ------------------------------------------------------------------ */
+
+export type Coordenadas = { latitude: number; longitude: number };
+
+function comoNumero(valor: string): number | null {
+  const limpo = valor.trim().replace(/,/g, ".");
+  if (!limpo) return null;
+  const numeroLocal = Number(limpo);
+  return Number.isFinite(numeroLocal) ? numeroLocal : null;
+}
+
+function seisCasas(valor: number): number {
+  return Math.round(valor * 1e6) / 1e6;
+}
+
+/**
+ * Leitura tolerante: aceita `-23.3,-46.3`, `-23.3 -46.3`, `-23,3;-46,3`, ponto
+ * ou vírgula decimal e longitude oeste com sinal. Devolve `null` quando o texto
+ * não forma um par dentro das faixas válidas.
+ */
+export function parsearCoordenadas(valor: string | null | undefined): Coordenadas | null {
+  const bruto = texto(valor).replace(/[°º]/g, " ").trim();
+  if (!bruto) return null;
+  let partes = bruto.split(/[,;/\s]+/).filter(Boolean);
+  if (partes.length === 4) partes = [`${partes[0]}.${partes[1]}`, `${partes[2]}.${partes[3]}`];
+  if (partes.length !== 2) return null;
+  const latitude = comoNumero(partes[0]);
+  const longitude = comoNumero(partes[1]);
+  if (latitude === null || longitude === null) return null;
+  if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return null;
+  return { latitude: seisCasas(latitude), longitude: seisCasas(longitude) };
+}
+
+/** Coordenada no formato do campo de texto e da tela de revisão. */
+export function textoDasCoordenadas(valor: Coordenadas | null): string {
+  if (!valor) return "";
+  return `${valor.latitude.toFixed(6)}, ${valor.longitude.toFixed(6)}`;
+}
+
+/* ------------------------------------------------------------------ *
+ * Mensagens do servidor (`gm_registrar_ocorrencia` / `gm_completar_bo`),
+ * copiadas ao pé da letra: o formulário corrige com as mesmas palavras que o
+ * banco usaria, então o guarda nunca lê dois textos para o mesmo problema.
+ * ------------------------------------------------------------------ */
+
+export const MSG = {
+  sessaoPerdida: "Sessão não identificada. Faça login novamente para registrar a ocorrência.",
+  gravidade: "Gravidade inválida. Escolha Baixa, Média, Alta ou Crítica.",
+  tipo: "Informe o tipo da ocorrência.",
+  forma: "Informe como o acionamento chegou até a Guarda.",
+  local: "Informe o local da ocorrência.",
+  inicio: "Informe o horário em que o atendimento começou.",
+  encerramentoAnteriorRegistro: "O horário de encerramento não pode ser anterior ao início do atendimento.",
+  responsavel: "Escolha o GM responsável: o administrador do sistema não assina atendimento em campo.",
+  responsavelEscolha: "Escolha o GM responsável pelo atendimento.",
+  responsavelInativo: "O GM responsável precisa estar cadastrado e ativo no sistema.",
+  apoio: "Escolha o GM que deu apoio. Nenhum atendimento é registrado sozinho.",
+  apoioIgualResponsavel: "O GM de apoio deve ser diferente do GM responsável pela ocorrência.",
+  apoioInativo: "O GM de apoio precisa estar cadastrado e ativo no sistema.",
+  coordenadas: "Coordenadas no formato -23.3,-46.3 (latitude e longitude em graus decimais).",
+  encerramentoObrigatorio: "Informe o horário em que o atendimento terminou.",
+  encerramentoAnterior: "O encerramento não pode ser anterior ao início do atendimento.",
+  gravidadeParaConcluir: "Este BO está sem gravidade. Escolha Baixa, Média, Alta ou Crítica para concluir.",
+  apoioParaConcluir: "Esta ocorrência não tem GM de apoio registrado. Informe o apoio para concluir.",
+  apoioExigeGestao: "Registrar apoio em um BO já sincronizado exige supervisão ou administração.",
+  semPermissao: "Você não tem permissão para concluir esta ocorrência.",
+  jaConcluido: "Este BO já foi concluído.",
+} as const;
 
 export const ROTULO_QUALIDADE: Record<string, string> = {
   sem_coordenada: "Sem coordenada",
@@ -517,6 +637,10 @@ export type DadosNovoRegistro = {
   numero_bo?: string | null;
   orgao_bo?: string | null;
   data_bo?: string | null;
+  nome_solicitante?: string | null;
+  telefone_solicitante?: string | null;
+  cpf_solicitante?: string | null;
+  identificacao_adicional?: string | null;
   codigo_operacional?: string | null;
   modo_criacao: "completo" | "rapido";
   responsavel_id?: string | null;
@@ -713,7 +837,8 @@ export function lerFiltroDaUrl(): LeituraUrl {
   };
 }
 
-export function escreverUrl(filtro: FiltroOcorrencias, ordenacao: OrdenacaoOcorrencia, detalhe: string | null, push = false) {
+/** Consulta (`aba=...&busca=...`) que representa o recorte atual da lista. */
+export function construirQuery(filtro: FiltroOcorrencias, ordenacao: OrdenacaoOcorrencia): string {
   const params = new URLSearchParams();
   if (filtro.aba !== "todas") params.set("aba", filtro.aba);
   if (filtro.busca.trim()) params.set("busca", filtro.busca.trim());
@@ -730,7 +855,11 @@ export function escreverUrl(filtro: FiltroOcorrencias, ordenacao: OrdenacaoOcorr
   if (filtro.somenteComBo) params.set("bo", "somente");
   else if (filtro.somenteSemBo) params.set("bo", "ausente");
   if (ordenacao !== "recentes") params.set("ordem", ordenacao);
-  const query = params.toString();
+  return params.toString();
+}
+
+export function escreverUrl(filtro: FiltroOcorrencias, ordenacao: OrdenacaoOcorrencia, detalhe: string | null, push = false) {
+  const query = construirQuery(filtro, ordenacao);
   const caminho = detalhe ? `/ocorrencias/${encodeURIComponent(detalhe)}` : "/ocorrencias";
   const hash = `#${caminho}${query ? `?${query}` : ""}`;
   if (hash === window.location.hash) return;
@@ -857,7 +986,8 @@ export function chipsAtivos(filtro: FiltroOcorrencias, totais: TotaisOcorrencias
  * Pitangueiras). Sem offset na string lemos como hora local do aparelho; quando
  * o offset vem explícito (por exemplo `gerado_em`), o Date respeita o fuso.
  */
-function parsearData(valor: string | null | undefined): Date | null {
+/** Lê horário do banco ou do campo `datetime-local` como hora local do aparelho. */
+export function parsearData(valor: string | null | undefined): Date | null {
   if (!valor) return null;
   const normalizado = valor.trim().replace(" ", "T");
   if (!normalizado) return null;

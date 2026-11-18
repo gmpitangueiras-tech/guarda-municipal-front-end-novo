@@ -7,7 +7,14 @@ import { getAuthenticatedProfile, signOut, type PerfilFuncional } from "./lib/au
 import { supabase } from "./lib/supabase";
 import brasaoGuarda from "./assets/brasao-guarda-pitangueiras.png";
 
-type Screen = "login" | "first-access" | "reset-request" | "reset-password" | "dashboard" | "occurrences";
+type Screen =
+  | "login"
+  | "first-access"
+  | "reset-request"
+  | "reset-password"
+  | "dashboard"
+  | "occurrences"
+  | "occurrence-new";
 
 type ProfileSeed = {
   email?: string | null;
@@ -19,6 +26,7 @@ type Route = { screen: Screen; tokenHash: string | null };
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Occurrences = lazy(() => import("./pages/Occurrences"));
+const OcorrenciaNova = lazy(() => import("./pages/OcorrenciaNova"));
 
 function readRoute(): Route {
   const raw = window.location.hash.replace(/^#/, "");
@@ -31,6 +39,8 @@ function readRoute(): Route {
   if (path.startsWith("/redefinir-senha")) return { screen: "reset-password", tokenHash: params.get("token_hash") };
   if (path.startsWith("/redefinir")) return { screen: "reset-request", tokenHash: null };
   if (path.startsWith("/primeiro-acesso")) return { screen: "first-access", tokenHash: null };
+  // A rota de registro vem antes: /ocorrencias/nova não é detalhe de ocorrência.
+  if (path.startsWith("/ocorrencias/nova")) return { screen: "occurrence-new", tokenHash: null };
   if (path.startsWith("/ocorrencias")) return { screen: "occurrences", tokenHash: null };
   if (path.startsWith("/inicio") || path.startsWith("/painel")) return { screen: "dashboard", tokenHash: null };
   return { screen: "login", tokenHash: null };
@@ -55,12 +65,14 @@ export default function App() {
       }
       if (event === "SIGNED_OUT") {
         setProfile(null);
-        if (["dashboard", "occurrences"].includes(readRoute().screen)) setRoute({ screen: "login", tokenHash: null });
+        if (["dashboard", "occurrences", "occurrence-new"].includes(readRoute().screen))
+          setRoute({ screen: "login", tokenHash: null });
       }
     })?.data?.subscription;
 
     async function restoreSession() {
-      const protectedScreen = startingScreen === "dashboard" || startingScreen === "occurrences";
+      const protectedScreen =
+        startingScreen === "dashboard" || startingScreen === "occurrences" || startingScreen === "occurrence-new";
       if (supabase && (startingScreen === "login" || protectedScreen)) {
         const { data, error } = await supabase.auth.getSession();
         if (!active) return;
@@ -71,7 +83,11 @@ export default function App() {
           if (!active) return;
           if (restoredProfile) {
             setProfile(restoredProfile);
-            setRoute({ screen: startingScreen === "occurrences" ? "occurrences" : "dashboard", tokenHash: null });
+            setRoute({
+              screen:
+                startingScreen === "occurrences" || startingScreen === "occurrence-new" ? startingScreen : "dashboard",
+              tokenHash: null,
+            });
             if (!protectedScreen) {
               window.history.replaceState(null, "", `${window.location.pathname}#/inicio`);
             }
@@ -167,6 +183,14 @@ export default function App() {
     return (
       <Suspense fallback={<main className="session-boot" role="status" aria-live="polite"><h1>Preparando ocorrências</h1><p>Carregando a lista operacional.</p></main>}>
         <Occurrences profile={profile} />
+      </Suspense>
+    );
+  }
+
+  if (route.screen === "occurrence-new" && profile) {
+    return (
+      <Suspense fallback={<main className="session-boot" role="status" aria-live="polite"><h1>Preparando registro</h1><p>Carregando o formulário de ocorrência.</p></main>}>
+        <OcorrenciaNova profile={profile} />
       </Suspense>
     );
   }

@@ -30,6 +30,7 @@ import {
   chipsAtivos,
   concluirBO,
   contarFiltrosAtivos,
+  construirQuery,
   escreverUrl,
   FILTRO_VAZIO,
   formatarDia,
@@ -41,8 +42,10 @@ import {
   lerEliminarAviso,
   lerFiltroDaUrl,
   loadOfficerOptions,
+  MSG,
   paraCampoDataHora,
   paraHorarioServidor,
+  parsearData,
   ROTULO_ORDENACAO,
   ROTULO_QUALIDADE,
   type AbaOcorrencia,
@@ -130,13 +133,15 @@ function CartaoOcorrencia({ item, onAbrir }: { item: OcorrenciaItem; onAbrir: (i
   const equipe = linhaEquipe(item);
   const data = item.data_hora_inicio || item.criado_em;
   const duracao = formatarDuracao(item.duracao_min);
+  // Mesma condiçao do painel do detalhe: BO incompleto oferece conclusao.
+  const concluivel = item.documento === "incompleto";
   return (
     <li className="occurrence-list-item">
       <button
         className="occurrence-card"
         type="button"
         onClick={() => onAbrir(item)}
-        aria-label={`Abrir ${item.tipo_rotulo}, ${item.identidade}`}
+        aria-label={`${concluivel ? "Concluir" : "Abrir"} ${item.tipo_rotulo}, ${item.identidade}`}
       >
         <MiniaturaOcorrencia item={item} />
         <span className="occurrence-card-copy">
@@ -192,8 +197,8 @@ function CartaoOcorrencia({ item, onAbrir }: { item: OcorrenciaItem; onAbrir: (i
             {item.tem_retificacao ? <em> · registro com retificação</em> : null}
           </span>
         </span>
-        <span className="occurrence-card-open">
-          Ver detalhes <ArrowRight size={16} aria-hidden="true" />
+        <span className={`occurrence-card-open${concluivel ? " is-acao" : ""}`}>
+          {concluivel ? "Concluir BO" : "Ver detalhes"} <ArrowRight size={16} aria-hidden="true" />
         </span>
       </button>
     </li>
@@ -511,22 +516,33 @@ function FormularioConcluirBo({
 
   async function enviar() {
     const horario = paraHorarioServidor(encerramento);
+    if (item.completado_em) {
+      setErro(MSG.jaConcluido);
+      return;
+    }
     if (!horario) {
-      setErro("Informe o horário em que o atendimento terminou.");
+      setErro(MSG.encerramentoObrigatorio);
+      return;
+    }
+    // O servidor compara o término com o início gravado; a tela avisa antes.
+    const inicio = parsearData(item.data_hora_inicio);
+    const termino = parsearData(encerramento);
+    if (inicio && termino && termino.getTime() < inicio.getTime()) {
+      setErro(MSG.encerramentoAnterior);
       return;
     }
     if (pedeGravidade && !gravidade) {
-      setErro("Este BO está sem gravidade. Escolha Baixa, Média, Alta ou Crítica para concluir.");
+      setErro(MSG.gravidadeParaConcluir);
       return;
     }
     if (pedeApoio && !apoioId) {
-      setErro("Escolha o GM que deu apoio. Nenhum atendimento é registrado sozinho.");
+      setErro(MSG.apoioParaConcluir);
       return;
     }
     if (pedeApoio && apoioId) {
       const apoioRepetido = oficiais.find((oficial) => oficial.id === apoioId && item.responsavel && oficial.label === `GM ${item.responsavel}`);
       if (apoioRepetido) {
-        setErro("O GM de apoio deve ser diferente do GM responsável pela ocorrência.");
+        setErro(MSG.apoioIgualResponsavel);
         return;
       }
     }
@@ -542,11 +558,13 @@ function FormularioConcluirBo({
       });
       onConcluido(
         resposta.numero_ocorrencia
-          ? `BO da Ocorrência ${resposta.numero_ocorrencia} concluído.`
+          ? `BO concluído — Ocorrência ${resposta.numero_ocorrencia}`
           : "BO concluído.",
       );
     } catch (cause) {
-      setErro(cause instanceof Error ? cause.message : "Não foi possível concluir o BO.");
+      // Erro do servidor aparece cru: a autoridade é o banco, a tela só traduz
+      // quando não há mensagem nenhuma.
+      setErro(cause instanceof Error && cause.message ? cause.message : "Não foi possível concluir o BO.");
     } finally {
       setEnviando(false);
     }
@@ -595,7 +613,9 @@ function FormularioConcluirBo({
               ))}
             </select>
           </label>
-          <p className="occurrences-field-note">Esse guarda ainda não está no sistema? Peça o cadastro ao administrador.</p>
+          <p className="occurrences-field-note">
+            {MSG.apoioExigeGestao} Esse guarda ainda não está no sistema? Peça o cadastro ao administrador.
+          </p>
         </div>
       ) : null}
 
@@ -1023,6 +1043,9 @@ export default function Occurrences({ profile }: { profile: PerfilFuncional }) {
   const baseTotais = totaisEscopo ?? totais;
   const chips = chipsAtivos(filtro, baseTotais);
   const filtrosAtivos = contarFiltrosAtivos(filtro);
+  /** O formulário novo abre com o recorte atual embutido para o botão voltar. */
+  const consultaAtual = construirQuery(filtro, ordenacao);
+  const enderecoNova = `#/ocorrencias/nova${consultaAtual ? `?${consultaAtual}` : ""}`;
 
   const abas: Array<{ id: AbaOcorrencia; rotulo: string; contador: number | null }> = [
     { id: "todas", rotulo: "Todas", contador: baseTotais?.abas.todas ?? null },
@@ -1157,7 +1180,7 @@ export default function Occurrences({ profile }: { profile: PerfilFuncional }) {
               <RefreshCw size={16} className={atualizando ? "spin" : ""} aria-hidden="true" />
               <span>{atualizando ? "Atualizando…" : "Atualizar"}</span>
             </button>
-            <a className="occurrences-create" href="#/ocorrencias/nova">
+            <a className="occurrences-create" href={enderecoNova}>
               <FilePlus2 size={17} aria-hidden="true" />
               <span>Nova ocorrência</span>
             </a>
