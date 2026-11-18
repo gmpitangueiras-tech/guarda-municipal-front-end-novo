@@ -56,7 +56,7 @@
 - [x] As miniaturas continuam em bucket privado, carregadas com a sessão autenticada e renderizadas apenas por URL blob temporária; nenhuma URL pública de armazenamento é criada.
 - [x] A consulta da interface filtra Guardas para registros próprios ou com participação ativa; Supervisor/Administrador podem ver a equipe. As políticas RLS existentes foram mantidas sem alteração.
 - [x] Atualização e falha de rede não apagam a lista já carregada; estado offline e pendência de sincronização são textuais, sem expor mensagens livres de erro ou prometer escrita/sincronização offline que esta etapa não implementa.
-- [x] O detalhe desta etapa é limitado a resumo operacional não sensível; dados de envolvidos, anexos detalhados, histórico completo, aprovações e retificações permanecem protegidos e não são apresentados como funcionalidades concluídas.
+- [x] O detalhe desta etapa é limitado a resumo operacional não sensível; dados de envolvidos, anexos detalhados, histórico completo, aprovações e retificações não são consultados nem exibidos nesta tela e não são apresentados como funcionalidades concluídas.
 - [x] “Nova ocorrência” continua abrindo o fluxo de criação operacional existente enquanto criação/edição e persistência offline não forem entregues nesta tela.
 - [x] A tela não altera tabelas, políticas RLS ou registros Supabase; consulta somente colunas necessárias ao cartão e à paginação.
 - [ ] Alinhar e aprovar uma migration RLS server-side para separar Guarda (criou/participação ativa), Supervisor (equipe) e Administrador (global), validando a compatibilidade com o aplicativo legado e a definição de “equipe”.
