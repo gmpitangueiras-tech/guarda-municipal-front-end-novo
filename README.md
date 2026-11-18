@@ -1,14 +1,14 @@
 # Guarda Municipal — Front-end interno
 
-Novo front-end mobile-first da Guarda Municipal de Pitangueiras/PR. Este projeto é separado do aplicativo antigo, que continua em uso pelos guardas durante a evolução desta versão.
+Novo front-end mobile-first da Guarda Municipal de Pitangueiras/PR. Este projeto é separado do aplicativo antigo, que continua em uso durante a evolução das telas operacionais.
 
-A aplicação usa o mesmo projeto Supabase do sistema atual e contém apenas a interface de login nesta primeira etapa. A chave incluída em `.env.production` é uma chave publicável, própria para uso no navegador; nenhuma chave de serviço foi incluída.
+A aplicação usa o projeto Supabase existente da GM e contém autenticação, recuperação de senha, painel inicial e a central de Ocorrências (`#/ocorrencias`). A lista é paginada e filtra os resultados conforme o perfil autenticado, continua sujeita à RLS existente, evita dados pessoais de envolvidos e usa anexos privados; esta entrega não altera políticas ou dados do banco. A criação continua no fluxo operacional existente até a implementação da etapa de criação/edição.
 
-Depois da autenticação, o front-end consulta o perfil em `public.usuarios`. Contas com `primeiro_acesso = true` ou status `primeiro_acesso` são direcionadas para a complementação cadastral. Nome Completo, CPF, Data de Nascimento e E-mail são obrigatórios; Telefone, Matrícula e Apelido operacional são opcionais.
+As variáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` apontam para a URL e a chave **publishable** do Supabase, próprias para uso no navegador com RLS habilitada. Nenhuma chave administrativa/service-role é incluída. O fluxo de primeiro acesso continua consultando `public.usuarios` e exige complementação cadastral quando o perfil sinaliza primeiro acesso.
 
 ## GitHub Pages
 
-Após o primeiro deploy, o endereço será:
+O endereço publicado é:
 
 <https://gmpitangueiras-tech.github.io/guarda-municipal-front-end-novo/>
 
@@ -17,7 +17,7 @@ O deploy é automático a cada push na branch `main`, pelo workflow em `.github/
 ## Teste local
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 

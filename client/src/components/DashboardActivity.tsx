@@ -400,7 +400,7 @@ export default function DashboardActivity({
           count: data?.occurrences.length ?? null,
           emptyTitle: "Nenhum boletim para exibir",
           emptyDescription: "A consulta da equipe mostrará aqui os novos boletins assim que estiverem disponíveis.",
-          destination: `${BOMOBILE_URL}#ocorrencias`,
+          destination: "#/ocorrencias",
           actionLabel: "Abrir ocorrências",
         },
         {
@@ -435,7 +435,7 @@ export default function DashboardActivity({
           count: data?.occurrences.length ?? null,
           emptyTitle: "Nenhuma ocorrência recente",
           emptyDescription: "Quando você registrar ou participar de uma ocorrência, ela aparecerá aqui.",
-          destination: `${BOMOBILE_URL}#ocorrencias`,
+          destination: "#/ocorrencias",
           actionLabel: "Abrir ocorrências",
         },
         {

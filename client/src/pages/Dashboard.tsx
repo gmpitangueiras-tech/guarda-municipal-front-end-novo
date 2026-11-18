@@ -36,7 +36,7 @@ const BOMOBILE_URL = `${window.location.origin}/bomobile/`;
 function notificationDestination(item: DashboardNotification) {
   const routeText = `${item.tipo ?? ""} ${item.link ?? ""}`.toLowerCase();
   const route = routeText.includes("ocorrencia") ? "ocorrencias" : "consulta";
-  return `${BOMOBILE_URL}#${route}`;
+  return route === "ocorrencias" ? "#/ocorrencias" : `${BOMOBILE_URL}#${route}`;
 }
 
 function shortName(profile: PerfilFuncional) {
@@ -202,7 +202,7 @@ export default function Dashboard({ profile, onSignOut, onProfileUpdated }: Dash
           </div>
         )}
         {data && data.pendingSyncCount > 0 && (
-          <a className="dashboard-sync-alert" href={`${BOMOBILE_URL}#ocorrencias`} aria-label={`${data.pendingSyncCount} registros pendentes de sincronização. Abrir ocorrências`}>
+          <a className="dashboard-sync-alert" href="#/ocorrencias" aria-label={`${data.pendingSyncCount} registros pendentes de sincronização. Abrir ocorrências`}>
             <span className="dashboard-sync-alert-icon"><RefreshCw size={19} aria-hidden="true" /></span>
             <span><strong>{data.pendingSyncCount} registro{data.pendingSyncCount === 1 ? "" : "s"} pendente{data.pendingSyncCount === 1 ? "" : "s"} de sincronização</strong><small>Confira a situação dos registros no aplicativo operacional.</small></span>
             <ArrowRight size={18} aria-hidden="true" />
@@ -218,7 +218,7 @@ export default function Dashboard({ profile, onSignOut, onProfileUpdated }: Dash
             {quickActions.map((action) => {
               const Icon = action.icon;
               return (
-                <a className="dashboard-quick-card" href={`${BOMOBILE_URL}#${action.route}`} key={action.title}>
+                <a className="dashboard-quick-card" href={action.route === "ocorrencias" ? "#/ocorrencias" : `${BOMOBILE_URL}#${action.route}`} key={action.title}>
                   <span className="dashboard-quick-icon"><Icon size={19} aria-hidden="true" /></span>
                   <span className="dashboard-quick-copy"><strong>{action.title}</strong><small>{action.description}</small></span>
                   <ArrowRight size={16} className="dashboard-quick-arrow" aria-hidden="true" />

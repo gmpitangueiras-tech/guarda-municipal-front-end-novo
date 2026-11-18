@@ -44,3 +44,19 @@
 - [x] Exibir “Marcar como lida” somente em avisos não lidos e um estado discreto para avisos já lidos.
 - [x] Preservar a lista durante atualizações subsequentes, usando indicador leve em vez de esconder os avisos.
 - [x] Usar gaveta lateral no desktop e painel inferior/quase tela cheia no celular.
+
+## Central operacional de Ocorrências — interface concluída
+- [x] O cabeçalho mostra “Ocorrências”, contagem dos registros visíveis, indicador online/offline, botão “Atualizar”, voltar para o painel e ação destacada “Nova ocorrência”.
+- [x] O resumo apresenta contagens de Rascunhos, Pendentes, Em andamento e Finalizadas, respeitando o escopo de acesso do perfil.
+- [x] Os filtros rápidos são Todas, Minhas, Pendentes e Finalizadas; o filtro inicial é Minhas para Guarda Municipal e Todas da equipe para Supervisor/Administrador.
+- [x] Os filtros avançados cobrem período, status, gravidade, tipo de ocorrência, local, GM responsável, registros com retificação e pendências de sincronização.
+- [x] A lista aplica busca, filtros, ordenação e paginação incremental no Supabase; não carrega todas as ocorrências de uma vez; mantém estados de carregamento, vazio, erro e tentativa novamente.
+- [x] Cada cartão mostra tipo, número do BO ou temporário, local, data/hora, status textual, gravidade, GM responsável e de apoio quando disponíveis, estado e tentativas de sincronização e miniatura privada quando existir.
+- [x] A lista não mostra CPF, nomes completos de envolvidos ou outros dados pessoais; nomes operacionais de GM são apelidos, nunca nomes completos por fallback.
+- [x] As miniaturas continuam em bucket privado, carregadas com a sessão autenticada e renderizadas apenas por URL blob temporária; nenhuma URL pública de armazenamento é criada.
+- [x] A consulta da interface filtra Guardas para registros próprios ou com participação ativa; Supervisor/Administrador podem ver a equipe. As políticas RLS existentes foram mantidas sem alteração.
+- [x] Atualização e falha de rede não apagam a lista já carregada; estado offline e pendência de sincronização são textuais, sem expor mensagens livres de erro ou prometer escrita/sincronização offline que esta etapa não implementa.
+- [x] O detalhe desta etapa é limitado a resumo operacional não sensível; dados de envolvidos, anexos detalhados, histórico completo, aprovações e retificações permanecem protegidos e não são apresentados como funcionalidades concluídas.
+- [x] “Nova ocorrência” continua abrindo o fluxo de criação operacional existente enquanto criação/edição e persistência offline não forem entregues nesta tela.
+- [x] A tela não altera tabelas, políticas RLS ou registros Supabase; consulta somente colunas necessárias ao cartão e à paginação.
+- [ ] Alinhar e aprovar uma migration RLS server-side para separar Guarda (criou/participação ativa), Supervisor (equipe) e Administrador (global), validando a compatibilidade com o aplicativo legado e a definição de “equipe”.

@@ -7,7 +7,7 @@ import { getAuthenticatedProfile, signOut, type PerfilFuncional } from "./lib/au
 import { supabase } from "./lib/supabase";
 import brasaoGuarda from "./assets/brasao-guarda-pitangueiras.png";
 
-type Screen = "login" | "first-access" | "reset-request" | "reset-password" | "dashboard";
+type Screen = "login" | "first-access" | "reset-request" | "reset-password" | "dashboard" | "occurrences";
 
 type ProfileSeed = {
   email?: string | null;
@@ -18,6 +18,7 @@ type ProfileSeed = {
 type Route = { screen: Screen; tokenHash: string | null };
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Occurrences = lazy(() => import("./pages/Occurrences"));
 
 function readRoute(): Route {
   const raw = window.location.hash.replace(/^#/, "");
@@ -30,6 +31,7 @@ function readRoute(): Route {
   if (path.startsWith("/redefinir-senha")) return { screen: "reset-password", tokenHash: params.get("token_hash") };
   if (path.startsWith("/redefinir")) return { screen: "reset-request", tokenHash: null };
   if (path.startsWith("/primeiro-acesso")) return { screen: "first-access", tokenHash: null };
+  if (path.startsWith("/ocorrencias")) return { screen: "occurrences", tokenHash: null };
   if (path.startsWith("/inicio") || path.startsWith("/painel")) return { screen: "dashboard", tokenHash: null };
   return { screen: "login", tokenHash: null };
 }
@@ -53,12 +55,13 @@ export default function App() {
       }
       if (event === "SIGNED_OUT") {
         setProfile(null);
-        if (readRoute().screen === "dashboard") setRoute({ screen: "login", tokenHash: null });
+        if (["dashboard", "occurrences"].includes(readRoute().screen)) setRoute({ screen: "login", tokenHash: null });
       }
     })?.data?.subscription;
 
     async function restoreSession() {
-      if (supabase && (startingScreen === "login" || startingScreen === "dashboard")) {
+      const protectedScreen = startingScreen === "dashboard" || startingScreen === "occurrences";
+      if (supabase && (startingScreen === "login" || protectedScreen)) {
         const { data, error } = await supabase.auth.getSession();
         if (!active) return;
         if (error) console.warn("Não foi possível recuperar a sessão Supabase.", error);
@@ -68,8 +71,8 @@ export default function App() {
           if (!active) return;
           if (restoredProfile) {
             setProfile(restoredProfile);
-            setRoute({ screen: "dashboard", tokenHash: null });
-            if (startingScreen !== "dashboard") {
+            setRoute({ screen: startingScreen === "occurrences" ? "occurrences" : "dashboard", tokenHash: null });
+            if (!protectedScreen) {
               window.history.replaceState(null, "", `${window.location.pathname}#/inicio`);
             }
           } else {
@@ -79,7 +82,7 @@ export default function App() {
             setRoute({ screen: "login", tokenHash: null });
             window.history.replaceState(null, "", window.location.pathname);
           }
-        } else if (startingScreen === "dashboard") {
+        } else if (protectedScreen) {
           setRoute({ screen: "login", tokenHash: null });
           window.history.replaceState(null, "", window.location.pathname);
         }
@@ -156,6 +159,14 @@ export default function App() {
     return (
       <Suspense fallback={<main className="session-boot" role="status" aria-live="polite"><h1>Preparando seu painel</h1><p>Carregando suas informações.</p></main>}>
         <Dashboard profile={profile} onSignOut={handleSignOut} onProfileUpdated={setProfile} />
+      </Suspense>
+    );
+  }
+
+  if (route.screen === "occurrences" && profile) {
+    return (
+      <Suspense fallback={<main className="session-boot" role="status" aria-live="polite"><h1>Preparando ocorrências</h1><p>Carregando a lista operacional.</p></main>}>
+        <Occurrences profile={profile} />
       </Suspense>
     );
   }

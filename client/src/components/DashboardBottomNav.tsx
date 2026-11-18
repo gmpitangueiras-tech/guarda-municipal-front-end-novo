@@ -163,7 +163,7 @@ export default function DashboardBottomNav({
           <House size={19} aria-hidden="true" />
           <span>Início</span>
         </a>
-        <a className="dashboard-nav-item" href={`${BOMOBILE_URL}#ocorrencias`}>
+        <a className="dashboard-nav-item" href="#/ocorrencias">
           <ClipboardList size={19} aria-hidden="true" />
           <span>Ocorrências</span>
         </a>
