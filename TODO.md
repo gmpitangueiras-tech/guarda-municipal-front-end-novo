@@ -108,3 +108,17 @@
 - [x] `npm run build` gera os bundles de produção; o módulo PDF é carregado sob demanda.
 - [x] `npx tsc --noEmit` conclui sem erros de tipos.
 - [x] `npm audit --omit=dev` não reporta vulnerabilidades nas dependências de produção.
+
+
+## Refinamento do cartão de Boletins — concluído
+- [x] A natureza do boletim ocupa uma linha visual própria, sem disputar largura com Gravidade e status/sincronização; os selos ficam separados, legíveis e sem truncamento desnecessário.
+- [x] Número e data/hora têm alinhamento previsível; local, GM criador e GM de apoio permanecem fáceis de escanear sem misturar-se com os selos.
+- [x] “Ver completo” e “PDF” formam uma área de ações equilibrada e de largura consistente, com alvos de toque confortáveis, sem cortes ou quebras estranhas em mobile e desktop.
+- [x] O cartão não exibe o nome extenso do arquivo após baixar PDF; apresenta apenas uma confirmação breve e temporária, mantendo erro/loading claros e acessíveis.
+- [x] Refinamento visual fica somente na aba Boletins/Minhas ocorrências; o conteúdo funcional do modal, o PDF e as abas Pessoas/Veículos permanecem inalterados.
+
+
+## Validação do refinamento de cartões — concluída
+- [x] `npm run build` e `npx tsc --noEmit` concluíram após a reorganização visual.
+- [x] `git diff --check` não aponta erros de whitespace.
+- [x] Nenhuma regra ou botão visual novo foi aplicado às abas de Pessoas/Veículos.

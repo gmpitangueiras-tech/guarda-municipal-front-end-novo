@@ -53,3 +53,12 @@ O retorno da RPC reúne dados da ocorrência, solicitante, equipe, envolvidos, a
 O módulo PDF reproduz o layout efetivamente desenhado em `/home/ubuntu/bomobile/js/pdf-export.js`, sem alterar o repositório legado: A4 retrato em mm, margens 14 mm, brasão 21 × 21 mm, cabeçalho/rodapé repetidos com paginação `PÁGINA n DE total`, filetes, rótulos Courier e narrativa Times, tabelas compactas, equipe, local, solicitante, classificação, relato, envolvidos, assinaturas, histórico/retificação e galeria fotográfica com legendas. Anexos de imagem entram no corpo; vídeos/PDFs não são embutidos, alinhado ao exportador oficial legado, mas seus nomes/tipos são informados no bloco de anexos. O nome de download segue `Ocorrencia_<numero-ou-Rascunho>_<AAAA-MM-DD>.pdf`.
 
 Estrutura dessa iteração: `client/src/components/dashboard/OccurrenceDetailDialog.tsx` (estado/carrossel/dialog), `client/src/lib/dashboard.ts` (tipos e chamada RPC), `client/src/lib/occurrence-pdf.ts` (gerador jsPDF/AutoTable), `client/src/components/DashboardActivity.tsx` e `client/src/index.css` (ações somente na aba Boletins/visual), `client/public/assets/logo-guarda-pdf.png` (cópia local do brasão legado) e `supabase/migrations/20261118_dashboard_ocorrencia_detalhe.sql` (RPC de leitura autorizada).
+
+
+## Refinamento visual dos cartões de Boletins
+
+O cartão de ocorrência deve ter hierarquia móvel clara: título em linha própria; gravidade e situação/sincronização como badges separados e legíveis; número oficial e data/hora numa faixa de metadados sem competir com o título; local e equipe em nível secundário. A área inferior abriga as ações “Ver completo” e “PDF” em botões com alvos de toque consistentes, alinhados e sem truncamento. No celular, as ações usam a largura interna disponível; no desktop, mantêm a mesma hierarquia sem alongar o cartão.
+
+O estado de PDF não exibe o nome completo do arquivo dentro do cartão: o download mantém o nome oficial, mas a confirmação visível é curta e temporária; erros continuam legíveis e acessíveis. A mudança fica restrita aos cartões de Boletins/Minhas ocorrências e não altera o conteúdo do modal, o PDF nem os cartões de Pessoas/Veículos.
+
+Estrutura: markup em `client/src/components/DashboardActivity.tsx`; estilos responsivos escopados em `client/src/index.css`; critérios de aceite em `TODO.md`.

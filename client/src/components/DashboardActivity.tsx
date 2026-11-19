@@ -160,12 +160,14 @@ function OccurrenceCard({
   onOpenFull,
   onExportPdf,
   pdfStatus,
+  isPdfExporting,
 }: {
   item: OccurrencePreview;
   onOpen: (record: SelectedRecord) => void;
   onOpenFull: (item: OccurrencePreview) => void;
   onExportPdf: (item: OccurrencePreview) => void;
   pdfStatus: PdfExportStatus | null;
+  isPdfExporting: boolean;
 }) {
   const status = occurrenceStatus(item);
   const dateValue = item.data_hora_inicio || item.criado_em;
@@ -180,7 +182,9 @@ function OccurrenceCard({
         <div className="dashboard-record-main dashboard-record-rich-main">
           <div className="dashboard-record-titleline dashboard-occurrence-titleline">
             <strong>{type}</strong>
-            <span className={`dashboard-severity-chip ${severityTone(item.gravidade)}`}>Gravidade · {severity}</span>
+          </div>
+          <div className="dashboard-occurrence-badges">
+            <span className={`dashboard-severity-chip ${severityTone(item.gravidade)}`}>Gravidade: {severity}</span>
             <span className={`dashboard-status ${statusTone(item.cancelado_em ? "cancelled" : item.status)}`}>{status}</span>
           </div>
           <div className={`dashboard-record-summary-line ${number ? "" : "is-time-only"}`}>
@@ -195,11 +199,11 @@ function OccurrenceCard({
         <button type="button" className="dashboard-occurrence-view-button" onClick={() => onOpenFull(item)}>
           <FileText size={15} aria-hidden="true" /><span>Ver completo</span>
         </button>
-        <button type="button" className="dashboard-occurrence-pdf-button" onClick={() => onExportPdf(item)} disabled={pdfStatus?.status === "loading"} aria-busy={pdfStatus?.status === "loading"}>
+        <button type="button" className="dashboard-occurrence-pdf-button" onClick={() => onExportPdf(item)} disabled={isPdfExporting} aria-busy={isPdfExporting}>
           <FileDown size={15} aria-hidden="true" /><span>{pdfStatus?.status === "loading" ? "Gerando…" : "PDF"}</span>
         </button>
       </div>
-      {pdfStatus && <p className={`dashboard-occurrence-pdf-feedback is-${pdfStatus.status}`} role={pdfStatus.status === "error" ? "alert" : "status"}>{pdfStatus.message}</p>}
+      {pdfStatus && pdfStatus.status !== "loading" && <p className={`dashboard-occurrence-pdf-feedback is-${pdfStatus.status}`} role={pdfStatus.status === "error" ? "alert" : "status"}>{pdfStatus.message}</p>}
     </li>
   );
 }
@@ -416,16 +420,26 @@ export default function DashboardActivity({
   const [selectedRecord, setSelectedRecord] = useState<SelectedRecord | null>(null);
   const [selectedFullOccurrence, setSelectedFullOccurrence] = useState<OccurrencePreview | null>(null);
   const [pdfExportStatus, setPdfExportStatus] = useState<PdfExportStatus | null>(null);
+  const pdfStatusTimeoutRef = useRef<number | null>(null);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const closeRecordDetails = useCallback(() => setSelectedRecord(null), []);
   const closeFullOccurrence = useCallback(() => setSelectedFullOccurrence(null), []);
+  useEffect(() => () => {
+    if (pdfStatusTimeoutRef.current !== null) window.clearTimeout(pdfStatusTimeoutRef.current);
+  }, []);
   const handlePdfExport = useCallback(async (item: OccurrencePreview) => {
+    if (pdfStatusTimeoutRef.current !== null) window.clearTimeout(pdfStatusTimeoutRef.current);
+    pdfStatusTimeoutRef.current = null;
     setPdfExportStatus({ id: item.id, status: "loading", message: "Preparando o PDF oficial…" });
     try {
       const detail = await loadOccurrenceDetail(item.id);
       const { exportOccurrencePdf } = await import("@/lib/occurrence-pdf");
-      const filename = await exportOccurrencePdf(detail);
-      setPdfExportStatus({ id: item.id, status: "success", message: `PDF salvo: ${filename}` });
+      await exportOccurrencePdf(detail);
+      setPdfExportStatus({ id: item.id, status: "success", message: "PDF baixado." });
+      pdfStatusTimeoutRef.current = window.setTimeout(() => {
+        setPdfExportStatus((current) => current?.id === item.id && current.status === "success" ? null : current);
+        pdfStatusTimeoutRef.current = null;
+      }, 3000);
     } catch {
       setPdfExportStatus({ id: item.id, status: "error", message: "Não foi possível exportar este boletim. Verifique seu acesso e tente novamente." });
     }
@@ -518,6 +532,7 @@ export default function DashboardActivity({
             onOpenFull={setSelectedFullOccurrence}
             onExportPdf={handlePdfExport}
             pdfStatus={pdfExportStatus?.id === item.id ? pdfExportStatus : null}
+            isPdfExporting={pdfExportStatus?.status === "loading"}
           />
         ))
       : selectedTab.id === "people"

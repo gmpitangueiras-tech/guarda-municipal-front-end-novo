@@ -4377,3 +4377,179 @@ input:focus-visible {
   .dashboard-occurrence-view-button,
   .dashboard-occurrence-pdf-button { animation: none; transition: none; }
 }
+
+
+/* Refinamento dos cartões de Boletins: hierarquia clara e ações alinhadas. */
+.dashboard-theme-blue .dashboard-record-tabpanel .dashboard-record-row.dashboard-record-rich.dashboard-occurrence-entry {
+  display: block;
+  margin: 0 0 10px;
+  padding: 7px;
+  border: 1px solid #e2eaf2;
+  border-bottom: 1px solid #e2eaf2;
+  border-radius: 17px;
+  background: #fff;
+  box-shadow: 0 3px 12px rgba(23, 63, 104, .055);
+}
+.dashboard-theme-blue .dashboard-occurrence-entry > .dashboard-record-card-button {
+  grid-template-columns: 54px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding: 7px;
+  border-color: transparent;
+  border-radius: 12px;
+}
+.dashboard-theme-blue .dashboard-occurrence-entry > .dashboard-record-card-button:hover {
+  border-color: #e8eff5;
+  background: #f8fbfd;
+}
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-record-rich-main { gap: 8px; }
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-occurrence-titleline {
+  display: block;
+  min-width: 0;
+  overflow: visible;
+}
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-occurrence-titleline > strong {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #153b60;
+  font-size: 14px;
+  font-weight: 820;
+  line-height: 1.3;
+  letter-spacing: -.015em;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-occurrence-badges {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-occurrence-badges .dashboard-severity-chip,
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-occurrence-badges .dashboard-status {
+  display: inline-flex;
+  max-width: 100%;
+  min-height: 25px;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 760;
+  line-height: 1.2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-record-summary-line {
+  min-width: 0;
+  gap: 6px 9px;
+  color: #536d84;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-record-number {
+  font-size: 11px;
+  font-weight: 780;
+}
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-record-summary-line time {
+  color: #667d92;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-record-location {
+  color: #506b84;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-record-location > svg,
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-record-officers > span > svg {
+  color: #5f7f9c;
+}
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-record-officers {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 12px;
+  margin-top: 0;
+}
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-record-officers > span {
+  color: #526b82;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-record-officers strong { color: #294d6e; }
+.dashboard-occurrence-card-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px;
+  align-items: stretch;
+  gap: 8px;
+  margin: 7px 7px 2px;
+  padding-top: 8px;
+  border-top: 1px solid #edf2f6;
+}
+.dashboard-occurrence-card-actions .dashboard-occurrence-view-button,
+.dashboard-occurrence-card-actions .dashboard-occurrence-pdf-button {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.dashboard-occurrence-card-actions .dashboard-occurrence-view-button { justify-self: stretch; }
+.dashboard-occurrence-card-actions .dashboard-occurrence-pdf-button { justify-self: stretch; }
+.dashboard-occurrence-pdf-feedback {
+  width: fit-content;
+  max-width: calc(100% - 14px);
+  margin: 6px 7px 5px;
+  padding: 5px 9px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.dashboard-occurrence-pdf-feedback.is-success {
+  border-color: #a8d6b8;
+  background: #e8f5ed;
+  color: #185b3b;
+}
+.dashboard-occurrence-pdf-feedback.is-error {
+  border-color: #e5b0aa;
+  border-radius: 10px;
+  background: #fff1ef;
+  color: #8e2119;
+}
+@media (max-width: 640px) {
+  .dashboard-theme-blue .dashboard-occurrence-entry > .dashboard-record-card-button {
+    grid-template-columns: 50px minmax(0, 1fr);
+    gap: 10px;
+    padding: 6px;
+  }
+  .dashboard-theme-blue .dashboard-occurrence-entry > .dashboard-record-card-button .dashboard-record-artwork {
+    width: 50px;
+    height: 50px;
+  }
+  .dashboard-theme-blue .dashboard-occurrence-entry .dashboard-record-officers {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .dashboard-occurrence-card-actions {
+    grid-template-columns: minmax(0, 1fr) 84px;
+    gap: 7px;
+    margin: 7px 6px 2px;
+    padding-top: 7px;
+  }
+  .dashboard-occurrence-card-actions .dashboard-occurrence-view-button,
+  .dashboard-occurrence-card-actions .dashboard-occurrence-pdf-button {
+    min-height: 46px;
+    padding: 9px 8px;
+    font-size: 12px;
+  }
+  .dashboard-occurrence-pdf-feedback { margin-right: 6px; margin-left: 6px; }
+}
+@media (max-width: 360px) {
+  .dashboard-occurrence-card-actions { grid-template-columns: minmax(0, 1fr) 78px; gap: 6px; }
+  .dashboard-occurrence-card-actions .dashboard-occurrence-view-button,
+  .dashboard-occurrence-card-actions .dashboard-occurrence-pdf-button { padding-right: 6px; padding-left: 6px; }
+}
