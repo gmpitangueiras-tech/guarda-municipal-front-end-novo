@@ -111,14 +111,15 @@
 
 
 ## Refinamento do cartão de Boletins — concluído
-- [x] A natureza do boletim ocupa uma linha visual própria, sem disputar largura com Gravidade e status/sincronização; os selos ficam separados, legíveis e sem truncamento desnecessário.
-- [x] Número e data/hora têm alinhamento previsível; local, GM criador e GM de apoio permanecem fáceis de escanear sem misturar-se com os selos.
-- [x] “Ver completo” e “PDF” formam uma área de ações equilibrada e de largura consistente, com alvos de toque confortáveis, sem cortes ou quebras estranhas em mobile e desktop.
-- [x] O cartão não exibe o nome extenso do arquivo após baixar PDF; apresenta apenas uma confirmação breve e temporária, mantendo erro/loading claros e acessíveis.
-- [x] Refinamento visual fica somente na aba Boletins/Minhas ocorrências; o conteúdo funcional do modal, o PDF e as abas Pessoas/Veículos permanecem inalterados.
+- [x] O cartão abre o detalhe completo ao tocar/clicar no seu conteúdo; o botão PDF é a única ação separada e não fica aninhado no controle que abre detalhes.
+- [x] Priorizar tipo e número do registro; informar explicitamente quando a gravidade, data/hora ou numeração ainda não estiverem disponíveis.
+- [x] Exibir de forma independente e com rótulos explícitos os estados Atendimento (situação), Documento (completude do BO) e Sincronização (transporte), usando os valores/descrições calculados pela RPC server-side `gm_ocorrencias_itens` e não inferências do campo legado `status`.
+- [x] As cores são reforço semântico, com texto/labels para informar o estado; manter leitura responsiva em mobile e desktop sem afetar Pessoas e Veículos.
+- [x] O botão PDF mostra “Gerando PDF…” durante o processamento, “PDF baixado.” no sucesso e orientação clara de erro; feedback temporário é anunciado acessivelmente, sem exibir nome de arquivo longo.
+- [x] A mudança permanece na aba Boletins; detalhe completo, padrão oficial do PDF e repositório BO Mobile são preservados.
 
 
 ## Validação do refinamento de cartões — concluída
-- [x] `npm run build` e `npx tsc --noEmit` concluíram após a reorganização visual.
-- [x] `git diff --check` não aponta erros de whitespace.
-- [x] Nenhuma regra ou botão visual novo foi aplicado às abas de Pessoas/Veículos.
+- [x] `npm run build` e `npx tsc --noEmit` concluíram sem erros após a implementação.
+- [ ] Confirmar visualmente no preview os estados do cartão em desktop/mobile após a atualização.
+- [ ] `git diff --check`, commit/push e publicação Pages após finalizar validações.

@@ -42,10 +42,10 @@ type SelectedRecord =
 type PdfExportStatus = { id: string; status: "loading" | "success" | "error"; message: string };
 
 function formatDate(value: string | null | undefined) {
-  if (!value) return "Data não informada";
+  if (!value) return "Data/hora não informada";
   const normalized = value.includes("T") ? value : value.replace(" ", "T");
   const date = new Date(normalized);
-  if (Number.isNaN(date.getTime())) return "Data não informada";
+  if (Number.isNaN(date.getTime())) return "Data/hora não informada";
   return new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
     month: "2-digit",
@@ -99,6 +99,25 @@ function occurrenceNumber(item: OccurrencePreview) {
 function occurrenceStatus(item: OccurrencePreview) {
   if (item.cancelado_em) return "Cancelada";
   return humanizeStatus(item.status, "Em acompanhamento");
+}
+
+function occurrenceStateTone(value: string | null | undefined, axis: "situation" | "document" | "sync") {
+  const normalized = (value ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (!normalized) return "is-unset";
+  if (axis === "situation") {
+    if (normalized.includes("encerr") || normalized.includes("conclu")) return "is-complete";
+    if (normalized.includes("cancel")) return "is-cancelled";
+    if (normalized.includes("atendimento") || normalized.includes("andamento")) return "is-active";
+  }
+  if (axis === "document") {
+    if (normalized.includes("incompleto") || normalized.includes("complement")) return "is-pending";
+    if (normalized.includes("completo") || normalized.includes("finaliz")) return "is-complete";
+  }
+  if (axis === "sync") {
+    if (normalized.includes("falha") || normalized.includes("pendente")) return "is-pending";
+    if (normalized.includes("sincron") || normalized.includes("reconhec")) return "is-complete";
+  }
+  return "is-unset";
 }
 
 function readableRecordType(value: string | null | undefined, fallback: string) {
@@ -156,20 +175,17 @@ function occurrenceLocation(item: OccurrencePreview) {
 
 function OccurrenceCard({
   item,
-  onOpen,
   onOpenFull,
   onExportPdf,
   pdfStatus,
   isPdfExporting,
 }: {
   item: OccurrencePreview;
-  onOpen: (record: SelectedRecord) => void;
   onOpenFull: (item: OccurrencePreview) => void;
   onExportPdf: (item: OccurrencePreview) => void;
   pdfStatus: PdfExportStatus | null;
   isPdfExporting: boolean;
 }) {
-  const status = occurrenceStatus(item);
   const dateValue = item.data_hora_inicio || item.criado_em;
   const type = readableRecordType(item.tipo_ocorrencia || item.sub_tipo_ocorrencia, "Ocorrência registrada");
   const severity = readableRecordType(item.gravidade, "Não informada");
@@ -177,33 +193,34 @@ function OccurrenceCard({
   const location = occurrenceLocation(item);
   return (
     <li className="dashboard-record-row dashboard-record-rich dashboard-occurrence-entry">
-      <button className="dashboard-record-card-button" type="button" onClick={() => onOpen({ kind: "occurrence", item })} aria-label={`Abrir resumo de ${type}`}>
+      <button className="dashboard-record-card-button" type="button" onClick={() => onOpenFull(item)} aria-label={`Abrir boletim completo: ${type}`}>
         <RecordArtwork photo={item.photo} kind="occurrence" />
         <div className="dashboard-record-main dashboard-record-rich-main">
           <div className="dashboard-record-titleline dashboard-occurrence-titleline">
             <strong>{type}</strong>
           </div>
-          <div className="dashboard-occurrence-badges">
-            <span className={`dashboard-severity-chip ${severityTone(item.gravidade)}`}>Gravidade: {severity}</span>
-            <span className={`dashboard-status ${statusTone(item.cancelado_em ? "cancelled" : item.status)}`}>{status}</span>
+          <div className="dashboard-occurrence-badges" aria-label="Classificação do registro">
+            <span className={`dashboard-severity-chip ${severityTone(item.gravidade)}`}>{severity === "Não informada" ? "Gravidade não informada" : `Gravidade · ${severity}`}</span>
           </div>
           <div className={`dashboard-record-summary-line ${number ? "" : "is-time-only"}`}>
-            {number && <span className="dashboard-record-number">BO nº {number}</span>}
+            <span className="dashboard-record-number">{number ? `BO nº ${number}` : "Número do BO em geração"}</span>
             <time dateTime={dateValue || undefined}>{formatDate(dateValue)}</time>
+          </div>
+          <div className="dashboard-occurrence-states" aria-label="Estados do boletim">
+            <span className={`dashboard-occurrence-state ${occurrenceStateTone(item.situation, "situation")}`}><small>Atendimento</small>{item.situationLabel || "Situação não informada"}</span>
+            <span className={`dashboard-occurrence-state ${occurrenceStateTone(item.document, "document")}`}><small>Documento</small>{item.documentLabel || "Estado do BO não informado"}</span>
+            <span className={`dashboard-occurrence-state ${occurrenceStateTone(item.sync, "sync")}`}><small>Sincronização</small>{item.syncLabel || "Sincronização não informada"}</span>
           </div>
           <div className="dashboard-record-location" title={location}><MapPin size={13} aria-hidden="true" /><span>{location}</span></div>
           <OfficerDetails creatorName={item.creatorName} supportName={item.supportName} supportAssigned={item.supportAssigned} />
         </div>
       </button>
       <div className="dashboard-occurrence-card-actions">
-        <button type="button" className="dashboard-occurrence-view-button" onClick={() => onOpenFull(item)}>
-          <FileText size={15} aria-hidden="true" /><span>Ver completo</span>
-        </button>
         <button type="button" className="dashboard-occurrence-pdf-button" onClick={() => onExportPdf(item)} disabled={isPdfExporting} aria-busy={isPdfExporting}>
-          <FileDown size={15} aria-hidden="true" /><span>{pdfStatus?.status === "loading" ? "Gerando…" : "PDF"}</span>
+          <FileDown size={15} aria-hidden="true" /><span>{pdfStatus?.status === "loading" ? "Gerando PDF…" : "Baixar PDF"}</span>
         </button>
       </div>
-      {pdfStatus && pdfStatus.status !== "loading" && <p className={`dashboard-occurrence-pdf-feedback is-${pdfStatus.status}`} role={pdfStatus.status === "error" ? "alert" : "status"}>{pdfStatus.message}</p>}
+      {pdfStatus && <p className={`dashboard-occurrence-pdf-feedback is-${pdfStatus.status}`} role={pdfStatus.status === "error" ? "alert" : "status"} aria-live="polite">{pdfStatus.message}</p>}
     </li>
   );
 }
@@ -430,7 +447,7 @@ export default function DashboardActivity({
   const handlePdfExport = useCallback(async (item: OccurrencePreview) => {
     if (pdfStatusTimeoutRef.current !== null) window.clearTimeout(pdfStatusTimeoutRef.current);
     pdfStatusTimeoutRef.current = null;
-    setPdfExportStatus({ id: item.id, status: "loading", message: "Preparando o PDF oficial…" });
+    setPdfExportStatus({ id: item.id, status: "loading", message: "Gerando PDF oficial…" });
     try {
       const detail = await loadOccurrenceDetail(item.id);
       const { exportOccurrencePdf } = await import("@/lib/occurrence-pdf");
@@ -441,7 +458,11 @@ export default function DashboardActivity({
         pdfStatusTimeoutRef.current = null;
       }, 3000);
     } catch {
-      setPdfExportStatus({ id: item.id, status: "error", message: "Não foi possível exportar este boletim. Verifique seu acesso e tente novamente." });
+      setPdfExportStatus({ id: item.id, status: "error", message: "Não foi possível gerar o PDF. Verifique seu acesso e tente novamente." });
+      pdfStatusTimeoutRef.current = window.setTimeout(() => {
+        setPdfExportStatus((current) => current?.id === item.id && current.status === "error" ? null : current);
+        pdfStatusTimeoutRef.current = null;
+      }, 6000);
     }
   }, []);
 
@@ -528,7 +549,6 @@ export default function DashboardActivity({
           <OccurrenceCard
             key={item.id}
             item={item}
-            onOpen={setSelectedRecord}
             onOpenFull={setSelectedFullOccurrence}
             onExportPdf={handlePdfExport}
             pdfStatus={pdfExportStatus?.id === item.id ? pdfExportStatus : null}

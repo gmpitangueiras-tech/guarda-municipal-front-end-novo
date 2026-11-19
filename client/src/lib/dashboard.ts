@@ -22,6 +22,12 @@ export type OccurrencePreview = {
   creatorName: string | null;
   supportName: string | null;
   supportAssigned: boolean;
+  situation: string | null;
+  situationLabel: string | null;
+  document: string | null;
+  documentLabel: string | null;
+  sync: string | null;
+  syncLabel: string | null;
 };
 
 export type OccurrenceDetailPayload = {
@@ -131,7 +137,7 @@ export type OccurrenceDetailPayload = {
 
 type RawOccurrenceRow = Omit<
   OccurrencePreview,
-  "photo" | "creatorName" | "supportName" | "supportAssigned"
+  "photo" | "creatorName" | "supportName" | "supportAssigned" | "situation" | "situationLabel" | "document" | "documentLabel" | "sync" | "syncLabel"
 > & {
   criado_por: string | null;
 };
@@ -322,6 +328,33 @@ async function getOccurrenceImageMap(ids: string[]): Promise<Map<string, Private
   return new Map(pairs);
 }
 
+async function getOccurrenceStateMap(): Promise<Map<string, {
+  situation: string | null; situationLabel: string | null;
+  document: string | null; documentLabel: string | null;
+  sync: string | null; syncLabel: string | null;
+}>> {
+  if (!supabase) return new Map();
+  const { data, error } = await supabase.rpc("gm_ocorrencias_itens", {
+    p_filtro: { aba: "todas" }, p_pagina: 0, p_tamanho: 50, p_ordenacao: "recentes",
+  });
+  if (error || !data || typeof data !== "object") return new Map();
+  const rows = (data as { itens?: unknown }).itens;
+  if (!Array.isArray(rows)) return new Map();
+  const value = (row: Record<string, unknown>, key: string): string | null =>
+    typeof row[key] === "string" && (row[key] as string).trim() ? (row[key] as string).trim() : null;
+  return new Map(rows.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const row = item as Record<string, unknown>;
+    const id = value(row, "id");
+    if (!id) return [];
+    return [[id, {
+      situation: value(row, "situacao"), situationLabel: value(row, "situacao_rotulo"),
+      document: value(row, "documento"), documentLabel: value(row, "documento_rotulo"),
+      sync: value(row, "sincronia"), syncLabel: value(row, "sincronia_rotulo"),
+    }] as const];
+  }));
+}
+
 async function getOccurrenceTeamLinks(ids: string[]): Promise<OccurrenceTeamRow[]> {
   if (!supabase || ids.length === 0) return [];
   const { data, error } = await supabase
@@ -487,9 +520,10 @@ export async function loadDashboardData(profileId: string, profileRole: string |
   const approaches = sortByRecent([...people, ...vehicles]).slice(0, 6);
   const visibleApproaches = isTeamOverview ? [...people, ...vehicles] : approaches;
   const occurrenceIds = rawOccurrences.map((row) => row.id);
-  const [occurrencePhotos, occurrenceTeamLinks] = await Promise.all([
+  const [occurrencePhotos, occurrenceTeamLinks, occurrenceStates] = await Promise.all([
     getOccurrenceImageMap(occurrenceIds),
     getOccurrenceTeamLinks(occurrenceIds),
+    getOccurrenceStateMap(),
   ]);
 
   const teamByOccurrence = new Map<string, OccurrenceTeamRow[]>();
@@ -527,6 +561,12 @@ export async function loadDashboardData(profileId: string, profileRole: string |
       creatorName: displayOfficer(row.criado_por),
       supportName: support ? displayOfficer(support.guarda_id) : null,
       supportAssigned: Boolean(support),
+      situation: occurrenceStates.get(row.id)?.situation ?? null,
+      situationLabel: occurrenceStates.get(row.id)?.situationLabel ?? null,
+      document: occurrenceStates.get(row.id)?.document ?? null,
+      documentLabel: occurrenceStates.get(row.id)?.documentLabel ?? null,
+      sync: occurrenceStates.get(row.id)?.sync ?? null,
+      syncLabel: occurrenceStates.get(row.id)?.syncLabel ?? null,
     };
   });
 

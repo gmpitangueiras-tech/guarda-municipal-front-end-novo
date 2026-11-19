@@ -57,8 +57,8 @@ Estrutura dessa iteração: `client/src/components/dashboard/OccurrenceDetailDia
 
 ## Refinamento visual dos cartões de Boletins
 
-O cartão de ocorrência deve ter hierarquia móvel clara: título em linha própria; gravidade e situação/sincronização como badges separados e legíveis; número oficial e data/hora numa faixa de metadados sem competir com o título; local e equipe em nível secundário. A área inferior abriga as ações “Ver completo” e “PDF” em botões com alvos de toque consistentes, alinhados e sem truncamento. No celular, as ações usam a largura interna disponível; no desktop, mantêm a mesma hierarquia sem alongar o cartão.
+O cartão de ocorrência prioriza tipo/número e abre o detalhe completo ao ativar o corpo inteiro; o PDF fica como a única ação separada. Gravidade e dados ausentes têm texto explícito. Atendimento, Documento e Sincronização são três eixos com rótulos independentes e cores semânticas, preenchidos exclusivamente pelos estados e rótulos server-side da RPC `gm_ocorrencias_itens`; o dashboard não deduz estes eixos a partir do status legado. Em desktop os estados ficam em colunas compactas e no celular em linhas empilhadas, com texto legível.
 
-O estado de PDF não exibe o nome completo do arquivo dentro do cartão: o download mantém o nome oficial, mas a confirmação visível é curta e temporária; erros continuam legíveis e acessíveis. A mudança fica restrita aos cartões de Boletins/Minhas ocorrências e não altera o conteúdo do modal, o PDF nem os cartões de Pessoas/Veículos.
+O PDF mostra “Gerando PDF…” enquanto trabalha, confirmação curta de sucesso ou erro, e feedback acessível que expira temporariamente. O nome de download oficial permanece inalterado. A mudança fica restrita aos cartões de Boletins e preserva o modal, o PDF e os cartões de Pessoas/Veículos.
 
-Estrutura: markup em `client/src/components/DashboardActivity.tsx`; estilos responsivos escopados em `client/src/index.css`; critérios de aceite em `TODO.md`.
+Estrutura: RPC consumida por `client/src/lib/dashboard.ts`; markup em `client/src/components/DashboardActivity.tsx`; estilos responsivos escopados em `client/src/index.css`; critérios de aceite em `TODO.md`.

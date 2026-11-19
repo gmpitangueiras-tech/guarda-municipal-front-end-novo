@@ -4553,3 +4553,50 @@ input:focus-visible {
   .dashboard-occurrence-card-actions .dashboard-occurrence-view-button,
   .dashboard-occurrence-card-actions .dashboard-occurrence-pdf-button { padding-right: 6px; padding-left: 6px; }
 }
+
+/* Estados oficiais do BO no dashboard: atendimento, documento e sincronização. */
+.dashboard-occurrence-states {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  min-width: 0;
+}
+.dashboard-occurrence-state {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  padding: 7px 8px;
+  border: 1px solid #cbd9e6;
+  border-radius: 10px;
+  background: #f2f6fa;
+  color: #294e70;
+  font-size: 12px;
+  font-weight: 760;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.dashboard-occurrence-state small {
+  color: #526e87;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .035em;
+  text-transform: uppercase;
+}
+.dashboard-occurrence-state.is-active { border-color: #92bfdf; background: #e9f4fc; color: #174d79; }
+.dashboard-occurrence-state.is-complete { border-color: #9ccbb1; background: #eaf6ee; color: #225c3a; }
+.dashboard-occurrence-state.is-pending { border-color: #e4bd79; background: #fff5e3; color: #79500e; }
+.dashboard-occurrence-state.is-cancelled { border-color: #e3aaa5; background: #fff0ee; color: #842a23; }
+.dashboard-occurrence-state.is-unset { border-color: #cbd5de; background: #f0f3f6; color: #465b6e; }
+.dashboard-occurrence-state.is-unset small { color: #526271; }
+.dashboard-occurrence-entry .dashboard-occurrence-card-actions { grid-template-columns: minmax(0, 1fr); justify-items: end; }
+.dashboard-occurrence-entry .dashboard-occurrence-pdf-button { width: auto; min-width: 132px; }
+.dashboard-occurrence-entry > .dashboard-record-card-button:focus-visible {
+  outline: 3px solid #5790be;
+  outline-offset: 2px;
+}
+@media (max-width: 560px) {
+  .dashboard-occurrence-states { grid-template-columns: minmax(0, 1fr); }
+  .dashboard-occurrence-state { grid-template-columns: minmax(90px, .42fr) minmax(0, 1fr); align-items: center; }
+  .dashboard-occurrence-entry .dashboard-occurrence-card-actions { margin-left: 6px; }
+  .dashboard-occurrence-entry .dashboard-occurrence-pdf-button { min-width: 132px; }
+}
