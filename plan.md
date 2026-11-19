@@ -57,7 +57,7 @@ Estrutura dessa iteração: `client/src/components/dashboard/OccurrenceDetailDia
 
 ## Refinamento visual dos cartões de Boletins
 
-O cartão de ocorrência prioriza tipo/número e abre o detalhe completo ao ativar o corpo inteiro; o PDF fica como a única ação separada. Gravidade e dados ausentes têm texto explícito. Atendimento, Documento e Sincronização são três eixos com rótulos independentes e cores semânticas, preenchidos exclusivamente pelos estados e rótulos server-side da RPC `gm_ocorrencias_itens`; o dashboard não deduz estes eixos a partir do status legado. Em desktop os estados ficam em colunas compactas e no celular em linhas empilhadas, com texto legível.
+O cartão de ocorrência prioriza tipo/número e abre o detalhe completo ao ativar o corpo inteiro; o PDF fica como a única ação separada. Gravidade e dados ausentes têm texto explícito, sem chips de fundo. Atendimento, Documento e Sincronia usam rótulos independentes em uma linha textual simples, separada por pontos discretos, com apenas cor tipográfica semântica; os valores vêm exclusivamente da RPC `gm_ocorrencias_itens` e nunca são inferidos do status legado. A composição quebra naturalmente em telas estreitas, sem empilhar cartões ou caixas de estado.
 
 O PDF mostra “Gerando PDF…” enquanto trabalha, confirmação curta de sucesso ou erro, e feedback acessível que expira temporariamente. O nome de download oficial permanece inalterado. A mudança fica restrita aos cartões de Boletins e preserva o modal, o PDF e os cartões de Pessoas/Veículos.
 

@@ -4600,3 +4600,67 @@ input:focus-visible {
   .dashboard-occurrence-entry .dashboard-occurrence-card-actions { margin-left: 6px; }
   .dashboard-occurrence-entry .dashboard-occurrence-pdf-button { min-width: 132px; }
 }
+
+/* Simplificação pós-revisão: informação permanece explícita, mas sem pilha de chips. */
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-occurrence-severity {
+  min-width: 0;
+  color: #526b82;
+  font-size: 11px;
+  line-height: 1.3;
+}
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-occurrence-severity > span {
+  display: inline;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: inherit;
+  font-weight: 680;
+  line-height: inherit;
+}
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-occurrence-severity > .is-baixa { color: #24714d; }
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-occurrence-severity > .is-media { color: #805b13; }
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-occurrence-severity > .is-alta { color: #9a4c10; }
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-occurrence-severity > .is-critica { color: #9a2e27; }
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-occurrence-severity > .is-unset { color: #526b82; }
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-occurrence-states {
+  display: block;
+  min-width: 0;
+  color: #405a72;
+  font-size: 11px;
+  font-weight: 540;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-occurrence-state {
+  display: inline;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #405a72;
+  font-size: inherit;
+  font-weight: 540;
+  line-height: inherit;
+  overflow-wrap: anywhere;
+}
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-occurrence-state small {
+  display: inline;
+  color: #667d92;
+  font-size: 10px;
+  font-weight: 780;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-occurrence-state.is-active { color: #174d79; }
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-occurrence-state.is-complete { color: #225c3a; }
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-occurrence-state.is-pending { color: #79500e; }
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-occurrence-state.is-cancelled { color: #842a23; }
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-occurrence-state.is-unset { color: #526271; }
+.dashboard-theme-blue .dashboard-occurrence-entry .dashboard-occurrence-state:not(:last-child)::after {
+  content: "·";
+  margin: 0 5px;
+  color: #91a4b6;
+}

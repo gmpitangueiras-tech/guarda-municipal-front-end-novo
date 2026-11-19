@@ -199,17 +199,17 @@ function OccurrenceCard({
           <div className="dashboard-record-titleline dashboard-occurrence-titleline">
             <strong>{type}</strong>
           </div>
-          <div className="dashboard-occurrence-badges" aria-label="Classificação do registro">
-            <span className={`dashboard-severity-chip ${severityTone(item.gravidade)}`}>{severity === "Não informada" ? "Gravidade não informada" : `Gravidade · ${severity}`}</span>
+          <div className="dashboard-occurrence-severity" aria-label="Gravidade">
+            <span className={severityTone(item.gravidade)}>{severity === "Não informada" ? "Gravidade não informada" : `Gravidade: ${severity}`}</span>
           </div>
           <div className={`dashboard-record-summary-line ${number ? "" : "is-time-only"}`}>
             <span className="dashboard-record-number">{number ? `BO nº ${number}` : "Número do BO em geração"}</span>
             <time dateTime={dateValue || undefined}>{formatDate(dateValue)}</time>
           </div>
           <div className="dashboard-occurrence-states" aria-label="Estados do boletim">
-            <span className={`dashboard-occurrence-state ${occurrenceStateTone(item.situation, "situation")}`}><small>Atendimento</small>{item.situationLabel || "Situação não informada"}</span>
-            <span className={`dashboard-occurrence-state ${occurrenceStateTone(item.document, "document")}`}><small>Documento</small>{item.documentLabel || "Estado do BO não informado"}</span>
-            <span className={`dashboard-occurrence-state ${occurrenceStateTone(item.sync, "sync")}`}><small>Sincronização</small>{item.syncLabel || "Sincronização não informada"}</span>
+            <span className={`dashboard-occurrence-state ${occurrenceStateTone(item.situation, "situation")}`}><small>Atendimento</small> {item.situationLabel || "Situação não informada"}</span>
+            <span className={`dashboard-occurrence-state ${occurrenceStateTone(item.document, "document")}`}><small>Documento</small> {item.documentLabel || "Estado do BO não informado"}</span>
+            <span className={`dashboard-occurrence-state ${occurrenceStateTone(item.sync, "sync")}`}><small>Sincronia</small> {item.syncLabel || "Sincronização não informada"}</span>
           </div>
           <div className="dashboard-record-location" title={location}><MapPin size={13} aria-hidden="true" /><span>{location}</span></div>
           <OfficerDetails creatorName={item.creatorName} supportName={item.supportName} supportAssigned={item.supportAssigned} />

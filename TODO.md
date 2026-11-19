@@ -113,13 +113,13 @@
 ## Refinamento do cartão de Boletins — concluído
 - [x] O cartão abre o detalhe completo ao tocar/clicar no seu conteúdo; o botão PDF é a única ação separada e não fica aninhado no controle que abre detalhes.
 - [x] Priorizar tipo e número do registro; informar explicitamente quando a gravidade, data/hora ou numeração ainda não estiverem disponíveis.
-- [x] Exibir de forma independente e com rótulos explícitos os estados Atendimento (situação), Documento (completude do BO) e Sincronização (transporte), usando os valores/descrições calculados pela RPC server-side `gm_ocorrencias_itens` e não inferências do campo legado `status`.
-- [x] As cores são reforço semântico, com texto/labels para informar o estado; manter leitura responsiva em mobile e desktop sem afetar Pessoas e Veículos.
+- [x] Exibir Atendimento (situação), Documento (completude do BO) e Sincronia (transporte) em uma linha textual compacta e legível, separados discretamente por pontos; preencher apenas com valores/rótulos da RPC server-side `gm_ocorrencias_itens`, nunca por inferência do campo legado `status`.
+- [x] Evitar pilhas de chips/cartões coloridos: gravidade também aparece como texto simples; usar cor tipográfica discreta como reforço, não caixas, fundos ou bordas para cada dado. Preservar leitura responsiva sem afetar Pessoas e Veículos.
 - [x] O botão PDF mostra “Gerando PDF…” durante o processamento, “PDF baixado.” no sucesso e orientação clara de erro; feedback temporário é anunciado acessivelmente, sem exibir nome de arquivo longo.
 - [x] A mudança permanece na aba Boletins; detalhe completo, padrão oficial do PDF e repositório BO Mobile são preservados.
 
 
 ## Validação do refinamento de cartões — concluída
 - [x] `npm run build` e `npx tsc --noEmit` concluíram sem erros após a implementação.
-- [ ] Confirmar visualmente no preview os estados do cartão em desktop/mobile após a atualização.
-- [ ] `git diff --check`, commit/push e publicação Pages após finalizar validações.
+- [x] A comparação visual de referência confirmou que a pilha de selos ocupava espaço excessivo; o ajuste mantém gravidade e os três eixos em texto compacto sem caixas/chips, reduzindo a altura do cartão.
+- [ ] `npm run build`, `npx tsc --noEmit`, `git diff --check`, commit/push e publicação Pages desta simplificação.
