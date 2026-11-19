@@ -90,3 +90,21 @@
 - [x] Removidos rótulos/avisos redundantes e botões “Agora” desnecessários; envolvidos e anexos não repetem os títulos da etapa.
 - [x] Gravidade baixa/média/alta/crítica recebe cores semânticas mais fortes e indicação visual de seleção; situação, documento e gravidade têm bordas e fundos mais legíveis na Central, dashboard e formulário.
 - [x] Etapas ativas, cartões de modo e campos de equipe usam o azul institucional; chips de status/gravidade recebem tamanho legível e contraste suficiente.
+
+
+## Detalhe completo e exportação PDF — aba Boletins — concluída
+- [x] Somente os cards da aba Boletins/Minhas ocorrências, até os seis registros recentes já exibidos, mostram ações separadas “Ver completo” e PDF; Pessoas e Veículos não recebem os botões nesta iteração.
+- [x] “Ver completo” abre um modal acessível, adaptado a celular, carrega o registro completo sem alterar dados e apresenta identificação, natureza/subtipo/classificação/gravidade, horários e situação, endereço/coordenadas, solicitante, equipe, relato, envolvidos/dados complementares, assinaturas, histórico/retificação e cancelamento quando houver.
+- [x] Os anexos são navegáveis num carrossel dentro do modal, sem fechar e abrir uma imagem por vez; imagens usam URLs blob autenticadas revogadas ao trocar/fechar, e PDFs/vídeos usam URLs assinadas de curta duração (5 minutos), nunca URLs públicas permanentes.
+- [x] A função server-side de detalhe autoriza perfil ativo pelo escopo do servidor: Supervisor/Administrador conforme `gm_is_manager()`, Guarda se criou o registro ou tem participação ativa; ocorrência excluída ou sem acesso não é devolvida, e o cliente não escolhe a identidade/perfil usada na autorização.
+- [x] Assinaturas manuscritas continuam sem SELECT direto para authenticated; a RPC validada retorna somente as assinaturas do registro autorizado, inclusive assinaturas legadas já persistidas quando disponíveis.
+- [x] O botão PDF gera arquivo baixável sem modificar a ocorrência e reproduz o padrão oficial efetivo do BO Mobile (`js/pdf-export.js`): A4 retrato/mm, brasão institucional, cabeçalho/rodapé em todas as páginas, número e data de emissão, paginação total, sequência de seções e tipografia Courier/Times.
+- [x] O PDF contém os campos completos existentes, equipe, solicitante, envolvidos, assinaturas, relato, controle de versões/retificação/cancelamento e as fotos com legenda; vídeos e PDFs anexados são listados, não embutidos, conforme a exportação legada.
+- [x] Nome do arquivo segue o exportador oficial: `Ocorrencia_<numero_ocorrencia-ou-Rascunho>_<data Brasil AAAA-MM-DD>.pdf`; carregamento, falta de mídia e falha de RPC/exportação têm estados claros, sem exibir URL permanente do Storage.
+- [x] A feature não altera o BO Mobile, as abas de Pessoas/Veículos, os dados históricos ou as policies de leitura já existentes; nenhuma ocorrência operacional é criada para teste.
+
+
+## Verificação técnica — concluída
+- [x] `npm run build` gera os bundles de produção; o módulo PDF é carregado sob demanda.
+- [x] `npx tsc --noEmit` conclui sem erros de tipos.
+- [x] `npm audit --omit=dev` não reporta vulnerabilidades nas dependências de produção.

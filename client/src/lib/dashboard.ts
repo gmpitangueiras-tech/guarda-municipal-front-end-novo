@@ -24,6 +24,111 @@ export type OccurrencePreview = {
   supportAssigned: boolean;
 };
 
+export type OccurrenceDetailPayload = {
+  ocorrencia: {
+    id: string;
+    numero_ocorrencia: string | null;
+    numero_temporario: string | null;
+    status: string | null;
+    forma_solicitacao: string | null;
+    nome_solicitante: string | null;
+    telefone_solicitante: string | null;
+    endereco_solicitante: string | null;
+    codigo_municipal: string | null;
+    complemento: string | null;
+    bairro_solicitante: string | null;
+    identificacao_adicional: string | null;
+    codigo_operacional: string | null;
+    local_ocorrencia: string;
+    rodovia: string | null;
+    bairro_ocorrencia: string | null;
+    referencia: string | null;
+    data_hora_inicio: string;
+    data_hora_encerramento: string | null;
+    latitude: number | string | null;
+    longitude: number | string | null;
+    observacoes: string | null;
+    criado_por: string;
+    criado_em: string | null;
+    cancelado_em: string | null;
+    motivo_cancelamento: string | null;
+    ocorrencia_original_id: string | null;
+    justificativa_retificacao: string | null;
+    retificado_em: string | null;
+    numero_versao: number | null;
+    campos_alterados: unknown;
+    solicitacao_retificacao_justificativa: string | null;
+    solicitada_em: string | null;
+    aprovada_em: string | null;
+    rejeitada_em: string | null;
+    motivo_rejeicao: string | null;
+    tipo_ocorrencia: string | null;
+    sub_tipo_ocorrencia: string | null;
+    gravidade: string | null;
+    numero_bo: string | null;
+    orgao_bo: string | null;
+    data_bo: string | null;
+    cpf_solicitante: string | null;
+    rg_solicitante: string | null;
+    hash_pericial: string | null;
+    data_hora_finalizacao: string | null;
+    completado_em: string | null;
+    completado_por: string | null;
+    modo_criacao: string | null;
+    origem_criacao: string;
+  };
+  criador: { nome_completo: string | null; matricula: string | null; perfil: string | null } | null;
+  equipe: Array<{ papel: string; nome_completo: string; matricula: string | null; perfil: string | null }>;
+  envolvidos: Array<{
+    id: string;
+    tipo: string;
+    nome_completo: string;
+    data_nascimento: string | null;
+    rg: string | null;
+    cpf: string | null;
+    telefone: string | null;
+    nome_pai: string | null;
+    nome_mae: string | null;
+    endereco: string | null;
+    bairro: string | null;
+    cidade: string | null;
+    observacoes: string | null;
+  }>;
+  assinaturas: Array<{
+    id: string | null;
+    envolvido_id: string | null;
+    tipo: string | null;
+    nome: string | null;
+    cpf: string | null;
+    assinatura_data_url: string | null;
+    assinado_em: string | null;
+    assinado_por: string | null;
+    nome_guarda: string | null;
+    metodo: string | null;
+  }>;
+  anexos: Array<{
+    id: string;
+    nome_arquivo: string;
+    tipo_arquivo: string;
+    mime_type: string | null;
+    tamanho: number | null;
+    url: string;
+    url_thumb: string | null;
+    criado_em: string | null;
+    reference: PrivateImageReference | null;
+    previewReference: PrivateImageReference | null;
+  }>;
+  historico: Array<{
+    id: string;
+    is_original: boolean;
+    numero_versao: number | null;
+    criado_em: string | null;
+    retificado_em: string | null;
+    status: string | null;
+    campos_alterados: unknown;
+  }>;
+};
+
 type RawOccurrenceRow = Omit<
   OccurrencePreview,
   "photo" | "creatorName" | "supportName" | "supportAssigned"
@@ -449,6 +554,38 @@ export async function loadDashboardData(profileId: string, profileRole: string |
     approaches: approaches.map(enrichApproach),
     notifications: (notificationResult.data ?? []) as DashboardNotification[],
     unreadCount: unreadResult.count ?? 0,
+  };
+}
+
+export async function loadOccurrenceDetail(occurrenceId: string): Promise<OccurrenceDetailPayload> {
+  if (!supabase) throw new Error("Serviço de dados indisponível.");
+  if (!occurrenceId.trim()) throw new Error("Registro não encontrado ou sem acesso.");
+
+  const { data, error } = await supabase.rpc("gm_dashboard_ocorrencia_detalhe", {
+    p_ocorrencia_id: occurrenceId,
+  });
+  if (error || !data || typeof data !== "object") {
+    throw new Error("Não foi possível carregar o boletim completo. Verifique seu acesso e tente novamente.");
+  }
+
+  const payload = data as unknown as OccurrenceDetailPayload;
+  if (!payload.ocorrencia?.id) {
+    throw new Error("Registro não encontrado ou sem acesso.");
+  }
+
+  return {
+    ...payload,
+    equipe: Array.isArray(payload.equipe) ? payload.equipe : [],
+    envolvidos: Array.isArray(payload.envolvidos) ? payload.envolvidos : [],
+    assinaturas: Array.isArray(payload.assinaturas) ? payload.assinaturas : [],
+    historico: Array.isArray(payload.historico) ? payload.historico : [],
+    anexos: Array.isArray(payload.anexos)
+      ? payload.anexos.map((attachment) => ({
+          ...attachment,
+          reference: privateImageReference(attachment.url),
+          previewReference: privateImageReference(attachment.url_thumb) ?? privateImageReference(attachment.url),
+        }))
+      : [],
   };
 }
 

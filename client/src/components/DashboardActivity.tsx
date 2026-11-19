@@ -7,6 +7,8 @@ import {
   ChevronRight,
   CircleAlert,
   ClipboardList,
+  FileDown,
+  FileText,
   MapPin,
   RefreshCw,
   UserRound,
@@ -14,8 +16,9 @@ import {
   X,
 } from "lucide-react";
 import type { ApproachPreview, DashboardData, OccurrencePreview, PrivateImageReference } from "@/lib/dashboard";
-import { isManagementRole } from "@/lib/dashboard";
+import { isManagementRole, loadOccurrenceDetail } from "@/lib/dashboard";
 import PrivateRecordThumbnail from "@/components/PrivateRecordThumbnail";
+import OccurrenceDetailDialog from "@/components/dashboard/OccurrenceDetailDialog";
 
 const BOMOBILE_URL = `${window.location.origin}/bomobile/`;
 
@@ -35,6 +38,8 @@ type RecordTab = {
 type SelectedRecord =
   | { kind: "occurrence"; item: OccurrencePreview }
   | { kind: "approach"; item: ApproachPreview };
+
+type PdfExportStatus = { id: string; status: "loading" | "success" | "error"; message: string };
 
 function formatDate(value: string | null | undefined) {
   if (!value) return "Data não informada";
@@ -149,7 +154,19 @@ function occurrenceLocation(item: OccurrencePreview) {
   return parts.length ? parts.join(" · ") : "Local não informado";
 }
 
-function OccurrenceCard({ item, onOpen }: { item: OccurrencePreview; onOpen: (record: SelectedRecord) => void }) {
+function OccurrenceCard({
+  item,
+  onOpen,
+  onOpenFull,
+  onExportPdf,
+  pdfStatus,
+}: {
+  item: OccurrencePreview;
+  onOpen: (record: SelectedRecord) => void;
+  onOpenFull: (item: OccurrencePreview) => void;
+  onExportPdf: (item: OccurrencePreview) => void;
+  pdfStatus: PdfExportStatus | null;
+}) {
   const status = occurrenceStatus(item);
   const dateValue = item.data_hora_inicio || item.criado_em;
   const type = readableRecordType(item.tipo_ocorrencia || item.sub_tipo_ocorrencia, "Ocorrência registrada");
@@ -157,8 +174,8 @@ function OccurrenceCard({ item, onOpen }: { item: OccurrencePreview; onOpen: (re
   const number = occurrenceNumber(item);
   const location = occurrenceLocation(item);
   return (
-    <li className="dashboard-record-row dashboard-record-rich">
-      <button className="dashboard-record-card-button" type="button" onClick={() => onOpen({ kind: "occurrence", item })}>
+    <li className="dashboard-record-row dashboard-record-rich dashboard-occurrence-entry">
+      <button className="dashboard-record-card-button" type="button" onClick={() => onOpen({ kind: "occurrence", item })} aria-label={`Abrir resumo de ${type}`}>
         <RecordArtwork photo={item.photo} kind="occurrence" />
         <div className="dashboard-record-main dashboard-record-rich-main">
           <div className="dashboard-record-titleline dashboard-occurrence-titleline">
@@ -174,6 +191,15 @@ function OccurrenceCard({ item, onOpen }: { item: OccurrencePreview; onOpen: (re
           <OfficerDetails creatorName={item.creatorName} supportName={item.supportName} supportAssigned={item.supportAssigned} />
         </div>
       </button>
+      <div className="dashboard-occurrence-card-actions">
+        <button type="button" className="dashboard-occurrence-view-button" onClick={() => onOpenFull(item)}>
+          <FileText size={15} aria-hidden="true" /><span>Ver completo</span>
+        </button>
+        <button type="button" className="dashboard-occurrence-pdf-button" onClick={() => onExportPdf(item)} disabled={pdfStatus?.status === "loading"} aria-busy={pdfStatus?.status === "loading"}>
+          <FileDown size={15} aria-hidden="true" /><span>{pdfStatus?.status === "loading" ? "Gerando…" : "PDF"}</span>
+        </button>
+      </div>
+      {pdfStatus && <p className={`dashboard-occurrence-pdf-feedback is-${pdfStatus.status}`} role={pdfStatus.status === "error" ? "alert" : "status"}>{pdfStatus.message}</p>}
     </li>
   );
 }
@@ -388,8 +414,22 @@ export default function DashboardActivity({
   const showTeamOverview = isManagementRole(profileRole);
   const [activeTab, setActiveTab] = useState<DashboardRecordTabId>("occurrences");
   const [selectedRecord, setSelectedRecord] = useState<SelectedRecord | null>(null);
+  const [selectedFullOccurrence, setSelectedFullOccurrence] = useState<OccurrencePreview | null>(null);
+  const [pdfExportStatus, setPdfExportStatus] = useState<PdfExportStatus | null>(null);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const closeRecordDetails = useCallback(() => setSelectedRecord(null), []);
+  const closeFullOccurrence = useCallback(() => setSelectedFullOccurrence(null), []);
+  const handlePdfExport = useCallback(async (item: OccurrencePreview) => {
+    setPdfExportStatus({ id: item.id, status: "loading", message: "Preparando o PDF oficial…" });
+    try {
+      const detail = await loadOccurrenceDetail(item.id);
+      const { exportOccurrencePdf } = await import("@/lib/occurrence-pdf");
+      const filename = await exportOccurrencePdf(detail);
+      setPdfExportStatus({ id: item.id, status: "success", message: `PDF salvo: ${filename}` });
+    } catch {
+      setPdfExportStatus({ id: item.id, status: "error", message: "Não foi possível exportar este boletim. Verifique seu acesso e tente novamente." });
+    }
+  }, []);
 
   useEffect(() => {
     setActiveTab("occurrences");
@@ -470,7 +510,16 @@ export default function DashboardActivity({
   const recordRows = !data
     ? []
     : selectedTab.id === "occurrences"
-      ? data.occurrences.map((item) => <OccurrenceCard key={item.id} item={item} onOpen={setSelectedRecord} />)
+      ? data.occurrences.map((item) => (
+          <OccurrenceCard
+            key={item.id}
+            item={item}
+            onOpen={setSelectedRecord}
+            onOpenFull={setSelectedFullOccurrence}
+            onExportPdf={handlePdfExport}
+            pdfStatus={pdfExportStatus?.id === item.id ? pdfExportStatus : null}
+          />
+        ))
       : selectedTab.id === "people"
         ? data.peopleApproaches.map((item) => <ApproachCard key={`pessoa-${item.id}`} item={item} onOpen={setSelectedRecord} />)
         : selectedTab.id === "vehicles"
@@ -557,6 +606,7 @@ export default function DashboardActivity({
         )}
       </div>
       {selectedRecord && <RecordDetailsDialog record={selectedRecord} onClose={closeRecordDetails} />}
+      {selectedFullOccurrence && <OccurrenceDetailDialog occurrence={selectedFullOccurrence} onClose={closeFullOccurrence} />}
     </section>
   );
 }

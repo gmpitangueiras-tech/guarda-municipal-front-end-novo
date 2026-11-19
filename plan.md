@@ -42,3 +42,14 @@ A migration Supabase é aditiva: estende a RPC existente sem mudar sua assinatur
 4. Refinar a equipe para pré-preencher/bloquear o responsável da sessão Guarda/Supervisor, manter seleção de GM pelo Administrador e buscar apoio por autocomplete acessível após três caracteres.
 5. Remover repetições e dar mais contraste aos cards e chips de gravidade, situação e documento nas telas do formulário, da Central e do dashboard; compilar e verificar o diff sem criar registros operacionais de teste.
 6. Preservar `bomobile` intacto e preparar a entrega no GitHub conforme a autorização existente de publicação direta do frontend novo.
+
+
+## Iteração do dashboard — detalhe completo e PDF somente em Boletins
+
+A alteração abrange apenas os cartões de ocorrências da aba “Boletins” (ou “Ocorrências” no perfil Guarda); as abas Pessoas e Veículos não recebem novas ações. Cada cartão de BO terá uma ação explícita “Ver completo” e outra de PDF. O diálogo carrega um payload completo por RPC dedicada, com campos liberados por allowlist e autorização no servidor usando `gm_can_manage_occurrence(p_id)`: perfil ativo, autor ou participante com vínculo ativo; Supervisor/Administrador, conforme `gm_is_manager()`. O UUID recebido não é autoridade e o cliente não envia perfil/papel para decidir acesso.
+
+O retorno da RPC reúne dados da ocorrência, solicitante, equipe, envolvidos, assinaturas e metadados/caminhos de anexos, sem abrir `SELECT` direto na tabela privada de assinaturas. A galeria do diálogo navega entre anexos sem fechar/reabrir, carrega imagens autenticadas e apresenta PDFs/vídeos no próprio carrossel quando o navegador suporta, revogando URLs temporárias no fechamento. Mantém-se o bucket existente; nenhum link público ou alteração de leitura é introduzido.
+
+O módulo PDF reproduz o layout efetivamente desenhado em `/home/ubuntu/bomobile/js/pdf-export.js`, sem alterar o repositório legado: A4 retrato em mm, margens 14 mm, brasão 21 × 21 mm, cabeçalho/rodapé repetidos com paginação `PÁGINA n DE total`, filetes, rótulos Courier e narrativa Times, tabelas compactas, equipe, local, solicitante, classificação, relato, envolvidos, assinaturas, histórico/retificação e galeria fotográfica com legendas. Anexos de imagem entram no corpo; vídeos/PDFs não são embutidos, alinhado ao exportador oficial legado, mas seus nomes/tipos são informados no bloco de anexos. O nome de download segue `Ocorrencia_<numero-ou-Rascunho>_<AAAA-MM-DD>.pdf`.
+
+Estrutura dessa iteração: `client/src/components/dashboard/OccurrenceDetailDialog.tsx` (estado/carrossel/dialog), `client/src/lib/dashboard.ts` (tipos e chamada RPC), `client/src/lib/occurrence-pdf.ts` (gerador jsPDF/AutoTable), `client/src/components/DashboardActivity.tsx` e `client/src/index.css` (ações somente na aba Boletins/visual), `client/public/assets/logo-guarda-pdf.png` (cópia local do brasão legado) e `supabase/migrations/20261118_dashboard_ocorrencia_detalhe.sql` (RPC de leitura autorizada).
