@@ -63,6 +63,23 @@ export type ApproachFilters = {
   somenteAtivas: boolean;
 };
 
+export type NewApproachInput = {
+  kind: ApproachKind;
+  profileId: string;
+  supportId: string;
+  dataHoraInicio: string;
+  local: string;
+  tipoAbordagem: string;
+  tipoAtendimento: string;
+  fase: string;
+  motivo: string;
+  providencia: string;
+  temPrazo: boolean;
+  prazoData: string;
+  pessoa?: { nome: string; alcunha: string; cpf: string; rg: string; caracteristicasFisicas: string; vestimentas: string };
+  veiculo?: { placa: string; marcaModelo: string; cor: string; condutorNome: string; condutorCpf: string; identificacaoStatus: string; descricaoIdentificacao: string };
+};
+
 export const APPROACH_FILTERS_EMPTY: ApproachFilters = {
   busca: "",
   status: "",
@@ -71,6 +88,41 @@ export const APPROACH_FILTERS_EMPTY: ApproachFilters = {
   ate: "",
   somenteAtivas: true,
 };
+
+export async function createApproach(input: NewApproachInput): Promise<{ id: string }> {
+  if (!supabase) throw new Error("Serviço de dados indisponível.");
+  if (!input.supportId) throw new Error("Selecione um GM de apoio.");
+  if (input.supportId === input.profileId) throw new Error("O GM de apoio deve ser diferente do responsável.");
+  const table = input.kind === "pessoas" ? "abordagens_pessoas" : "abordagens_veiculos";
+  const common = {
+    criado_por: input.profileId,
+    guarda_apoio_id: input.supportId,
+    data_hora_inicio: input.dataHoraInicio,
+    local_abordagem: input.local.trim(),
+    tipo_abordagem: input.tipoAbordagem,
+    tipo_atendimento: input.tipoAtendimento,
+    fase: input.fase,
+    motivo: input.motivo.trim(),
+    providencia: input.providencia.trim() || null,
+    tem_prazo: input.temPrazo,
+    prazo_data: input.temPrazo && input.prazoData ? input.prazoData : null,
+    status_abordagem: "ativa",
+    status_regularizacao: "pendente",
+    status_retificacao: "normal",
+    esta_ativa: true,
+    anexos: [],
+  };
+  const record = input.kind === "pessoas"
+    ? { ...common, nome: input.pessoa?.nome.trim(), alcunha: input.pessoa?.alcunha.trim() || null, cpf: input.pessoa?.cpf.trim() || null, rg: input.pessoa?.rg.trim() || null, caracteristicas_fisicas: input.pessoa?.caracteristicasFisicas.trim() || null, vestimentas: input.pessoa?.vestimentas.trim() || null }
+    : { ...common, placa: input.veiculo?.placa.trim().toUpperCase() || null, marca_modelo: input.veiculo?.marcaModelo.trim() || null, cor: input.veiculo?.cor.trim() || null, condutor_nome: input.veiculo?.condutorNome.trim() || null, condutor_cpf: input.veiculo?.condutorCpf.trim() || null, identificacao_status: input.veiculo?.identificacaoStatus, descricao_identificacao: input.veiculo?.descricaoIdentificacao.trim() || null };
+  const { data, error } = await supabase.from(table).insert(record as never).select("id").single();
+  if (error || !data?.id) {
+    const message = error?.message ?? "Não foi possível registrar a abordagem.";
+    if (/GM de apoio|apoio/i.test(message)) throw new Error("Selecione um GM de apoio cadastrado e ativo, diferente do responsável.");
+    throw new Error(message);
+  }
+  return { id: data.id as string };
+}
 
 const COMMON_FIELDS = "id,criado_em,data_hora_inicio,data_hora_encerramento,data_hora_finalizacao,status_abordagem,status_regularizacao,status_retificacao,local_abordagem,tipo_abordagem,tipo_atendimento,fase,motivo,observacoes,providencia,identificacao_status,descricao_identificacao,tem_prazo,prazo_data,prazo_vencido,reincidencia_count,criado_por,guarda_apoio_id,numero_versao,esta_ativa,solicitada_em,aprovada_em,rejeitada_em,motivo_rejeicao,anexos";
 const PAGE_SIZE = 18;

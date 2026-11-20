@@ -132,3 +132,12 @@
 - [x] Abrir detalhe protegido responsivo com os campos específicos de pessoa/veículo, atendimento, equipe, local, regularização, prazo, observações, versão e estado de retificação.
 - [x] Preservar as policies RLS existentes: leitura apenas com perfil ativo e escrita/retificação conforme autor ou gestão; não publicar anexos nem modificar o BO Mobile legado.
 - [x] `npm ci`, `npm run build`, `npx tsc --noEmit` e `git diff --check` executados com sucesso; manifesto `public/manus-routes.json` atualizado.
+
+## Criação nativa de abordagens — implementação inicial
+- [x] Criar rota protegida `#/abordagens/nova?tipo=pessoas` e `tipo=veiculos` no frontend React.
+- [x] Substituir os atalhos do menu “Novo registro” por formulários nativos, sem navegação para o BO Mobile.
+- [x] Gravar pessoa ou veículo com insert autenticado, normalização de opcionais, data/hora, local, atendimento, fase, motivo, providência e prazo.
+- [x] Exigir GM de apoio ativo, com perfil Guarda/Supervisor, diferente do responsável, usando a lista já existente de oficiais ativos.
+- [x] Manter consulta disponível após o registro, com feedback do código criado e sem duplicar em caso de falha.
+- [ ] Habilitar anexos privados para as tabelas de abordagens: as policies atuais do bucket `anexos` autorizam somente caminhos vinculados a ocorrências; requer migration RLS aditiva antes de liberar upload nesta tela.
+- [x] Não alterar o aplicativo legado BO Mobile.
