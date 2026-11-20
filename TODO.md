@@ -123,3 +123,12 @@
 - [x] `npm run build` e `npx tsc --noEmit` concluíram sem erros após a implementação.
 - [x] A comparação visual de referência confirmou que a pilha de selos ocupava espaço excessivo; o ajuste mantém gravidade e os três eixos em texto compacto sem caixas/chips, reduzindo a altura do cartão.
 - [ ] `npm run build`, `npx tsc --noEmit`, `git diff --check`, commit/push e publicação Pages desta simplificação.
+
+
+## Central operacional de Pessoas e Veículos — concluída
+- [x] Criar rota protegida nativa `#/abordagens`, com atalhos equivalentes para `tipo=pessoas` e `tipo=veiculos`, mantendo o shell autenticado e a navegação inferior.
+- [x] Consultar `abordagens_pessoas` e `abordagens_veiculos` no Supabase com paginação, busca por identificação/local/motivo, filtros de status, regularização, período e registros ativos.
+- [x] Exibir listas operacionais separadas para Pessoas e Veículos, com identificação própria, situação, data/hora, local, equipe e miniatura privada quando disponível.
+- [x] Abrir detalhe protegido responsivo com os campos específicos de pessoa/veículo, atendimento, equipe, local, regularização, prazo, observações, versão e estado de retificação.
+- [x] Preservar as policies RLS existentes: leitura apenas com perfil ativo e escrita/retificação conforme autor ou gestão; não publicar anexos nem modificar o BO Mobile legado.
+- [x] `npm ci`, `npm run build`, `npx tsc --noEmit` e `git diff --check` executados com sucesso; manifesto `public/manus-routes.json` atualizado.

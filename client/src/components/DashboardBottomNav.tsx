@@ -27,9 +27,7 @@ import ProfileAvatar from "@/components/ProfileAvatar";
 
 type Sheet = "create" | "more" | "profile" | null;
 type ContactField = "email" | "telefone";
-type ActivePage = "inicio" | "ocorrencias";
-
-const BOMOBILE_URL = `${window.location.origin}/bomobile/`;
+type ActivePage = "inicio" | "ocorrencias" | "abordagens";
 
 function show(value: string | null | undefined) {
   return value?.trim() || "Não informado";
@@ -180,7 +178,7 @@ export default function DashboardBottomNav({
           <span className="dashboard-nav-create-icon"><Plus size={21} aria-hidden="true" /></span>
           <span>Novo registro</span>
         </button>
-        <a className="dashboard-nav-item" href={`${BOMOBILE_URL}#consulta`}>
+        <a className={`dashboard-nav-item${activePage === "abordagens" ? " is-current" : ""}`} href="#/abordagens" aria-current={activePage === "abordagens" ? "page" : undefined}>
           <Shield size={19} aria-hidden="true" />
           <span>Abordagens</span>
         </a>
@@ -210,8 +208,8 @@ export default function DashboardBottomNav({
                 <div className="dashboard-record-support-note" role="note"><span><Shield size={18} aria-hidden="true" /></span><span><strong>GM de apoio obrigatório</strong><small>Indique outro GM ativo. O sistema bloqueia abordagens sem esse vínculo e não sincroniza boletins sem equipe.</small></span></div>
                 <div className="dashboard-menu-options">
                   <a className="dashboard-menu-option" href="#/ocorrencias/nova"><span className="dashboard-menu-option-icon is-gold"><FilePlus2 size={20} aria-hidden="true" /></span><span><strong>Boletim de ocorrência</strong><small>Registre o BO no novo formulário, com GM responsável e apoio.</small></span><ArrowRight size={17} aria-hidden="true" /></a>
-                  <a className="dashboard-menu-option" href={`${BOMOBILE_URL}#consulta`}><span className="dashboard-menu-option-icon"><UserRound size={20} aria-hidden="true" /></span><span><strong>Abordagem de pessoa</strong><small>Na tela operacional, escolha Pessoa e indique o GM de apoio.</small></span><ArrowRight size={17} aria-hidden="true" /></a>
-                  <a className="dashboard-menu-option" href={`${BOMOBILE_URL}#consulta`}><span className="dashboard-menu-option-icon"><CarFront size={20} aria-hidden="true" /></span><span><strong>Abordagem de veículo</strong><small>Na tela operacional, escolha Veículo e indique o GM de apoio.</small></span><ArrowRight size={17} aria-hidden="true" /></a>
+                  <a className="dashboard-menu-option" href="#/abordagens?tipo=pessoas"><span className="dashboard-menu-option-icon"><UserRound size={20} aria-hidden="true" /></span><span><strong>Abordagem de pessoa</strong><small>Consultar registros de pessoas com acesso protegido.</small></span><ArrowRight size={17} aria-hidden="true" /></a>
+                  <a className="dashboard-menu-option" href="#/abordagens?tipo=veiculos"><span className="dashboard-menu-option-icon"><CarFront size={20} aria-hidden="true" /></span><span><strong>Abordagem de veículo</strong><small>Consultar registros de veículos com acesso protegido.</small></span><ArrowRight size={17} aria-hidden="true" /></a>
                 </div>
               </>
             )}

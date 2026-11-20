@@ -7,6 +7,7 @@ import { getAuthenticatedProfile, signOut, type PerfilFuncional } from "./lib/au
 import { supabase } from "./lib/supabase";
 import brasaoGuarda from "./assets/brasao-guarda-pitangueiras.png";
 import AuthenticatedAppShell from "@/components/AuthenticatedAppShell";
+const Approaches = lazy(() => import("./pages/Approaches"));
 
 type Screen =
   | "login"
@@ -15,7 +16,8 @@ type Screen =
   | "reset-password"
   | "dashboard"
   | "occurrences"
-  | "occurrence-new";
+  | "occurrence-new"
+  | "approaches";
 
 type ProfileSeed = {
   email?: string | null;
@@ -43,6 +45,7 @@ function readRoute(): Route {
   // A rota de registro vem antes: /ocorrencias/nova não é detalhe de ocorrência.
   if (path.startsWith("/ocorrencias/nova")) return { screen: "occurrence-new", tokenHash: null };
   if (path.startsWith("/ocorrencias")) return { screen: "occurrences", tokenHash: null };
+  if (path.startsWith("/abordagens") || path.startsWith("/pessoas") || path.startsWith("/veiculos")) return { screen: "approaches", tokenHash: null };
   if (path.startsWith("/inicio") || path.startsWith("/painel")) return { screen: "dashboard", tokenHash: null };
   return { screen: "login", tokenHash: null };
 }
@@ -67,14 +70,14 @@ export default function App() {
       }
       if (event === "SIGNED_OUT") {
         setProfile(null);
-        if (["dashboard", "occurrences", "occurrence-new"].includes(readRoute().screen))
+        if (["dashboard", "occurrences", "occurrence-new", "approaches"].includes(readRoute().screen))
           setRoute({ screen: "login", tokenHash: null });
       }
     })?.data?.subscription;
 
     async function restoreSession() {
       const protectedScreen =
-        startingScreen === "dashboard" || startingScreen === "occurrences" || startingScreen === "occurrence-new";
+        startingScreen === "dashboard" || startingScreen === "occurrences" || startingScreen === "occurrence-new" || startingScreen === "approaches";
       if (supabase && (startingScreen === "login" || protectedScreen)) {
         const { data, error } = await supabase.auth.getSession();
         if (!active) return;
@@ -87,7 +90,7 @@ export default function App() {
             setProfile(restoredProfile);
             setRoute({
               screen:
-                startingScreen === "occurrences" || startingScreen === "occurrence-new" ? startingScreen : "dashboard",
+                startingScreen === "occurrences" || startingScreen === "occurrence-new" || startingScreen === "approaches" ? startingScreen : "dashboard",
               tokenHash: null,
             });
             if (!protectedScreen) {
@@ -174,13 +177,13 @@ export default function App() {
     );
   }
 
-  if (profile && (route.screen === "dashboard" || route.screen === "occurrences" || route.screen === "occurrence-new")) {
-    const activePage = route.screen === "dashboard" ? "inicio" : "ocorrencias";
+  if (profile && (route.screen === "dashboard" || route.screen === "occurrences" || route.screen === "occurrence-new" || route.screen === "approaches")) {
+    const activePage = route.screen === "dashboard" ? "inicio" : route.screen === "approaches" ? "abordagens" : "ocorrencias";
     const fallback = route.screen === "dashboard"
       ? "Preparando seu painel"
       : route.screen === "occurrences"
         ? "Preparando ocorrências"
-        : "Preparando registro";
+          : route.screen === "approaches" ? "Preparando abordagens" : "Preparando registro";
 
     return (
       <AuthenticatedAppShell
@@ -195,6 +198,8 @@ export default function App() {
             <Dashboard profile={profile} onUnreadCountChange={setUnreadNotificationCount} />
           ) : route.screen === "occurrences" ? (
             <Occurrences profile={profile} />
+          ) : route.screen === "approaches" ? (
+            <Approaches profile={profile} />
           ) : (
             <OcorrenciaNova profile={profile} />
           )}

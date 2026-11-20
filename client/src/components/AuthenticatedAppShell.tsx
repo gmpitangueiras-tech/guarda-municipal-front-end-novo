@@ -5,7 +5,7 @@ import brasaoGuarda from "@/assets/brasao-guarda-pitangueiras.png";
 import DashboardBottomNav from "@/components/DashboardBottomNav";
 import ProfileAvatar from "@/components/ProfileAvatar";
 
-type ActivePage = "inicio" | "ocorrencias";
+type ActivePage = "inicio" | "ocorrencias" | "abordagens";
 
 type AuthenticatedAppShellProps = {
   profile: PerfilFuncional;
